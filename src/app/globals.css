@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Hide scrollbar but keep scrolling functional */
+.timeline-scroll {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.timeline-scroll::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
