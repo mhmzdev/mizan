@@ -3,12 +3,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { TimelineContainer } from "@/components/Timeline/TimelineContainer";
 import { NotesPanel } from "@/components/Notes/NotesPanel";
+import { NoteDrawer } from "@/components/Notes/NoteDrawer";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
 import { useTimelineStore } from "@/stores/timelineStore";
+import { useNotesStore } from "@/stores/notesStore";
 import { TimelineEvent } from "@/types";
 
 export default function Home() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const loadNotes = useNotesStore((s) => s.loadNotes);
 
   // Load events
   useEffect(() => {
@@ -16,6 +19,9 @@ export default function Home() {
       setEvents(mod.default as TimelineEvent[]);
     });
   }, []);
+
+  // Load notes from IndexedDB
+  useEffect(() => { loadNotes(); }, [loadNotes]);
 
   // Build year → events lookup map
   const eventsByYear = useMemo(() => {
@@ -54,8 +60,9 @@ export default function Home() {
       </header>
 
       {/* Main content: [Notes] [Timeline] [Timeline controls] */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 relative overflow-hidden">
         <NotesPanel />
+        <NoteDrawer />
         <TimelineContainer eventsByYear={eventsByYear} />
         <Sidebar />
       </div>

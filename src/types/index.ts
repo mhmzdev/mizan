@@ -1,5 +1,14 @@
 export type ZoomMode = "overview" | "centuries" | "decades" | "years";
 
+export interface Note {
+  id?: number;
+  year: number;
+  title: string;
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface TimelineEvent {
   id: string;
   year: number; // continuous integer: -4000 to 2025

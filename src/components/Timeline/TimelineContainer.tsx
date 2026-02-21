@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { useTimelineStore } from "@/stores/timelineStore";
+import { useNotesStore } from "@/stores/notesStore";
 import { getVisibleRangeFromPx } from "@/utils/virtualization";
 import { pxToYearContinuous, formatYear, getModeFromPxPerYear } from "@/utils/yearUtils";
 import { PX_PER_YEAR, YEAR_START, YEAR_END, TOTAL_YEARS, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR } from "@/utils/constants";
@@ -71,6 +72,15 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     if (mouse === null) return null;
     return pxToYearContinuous(scrollLeft + mouse.x, pxPerYear);
   }, [mouse, scrollLeft, pxPerYear]);
+
+  // Notes visible in current viewport (for personal track dots)
+  const allNotes    = useNotesStore((s) => s.notes);
+  const visibleNotes = useMemo(
+    () => allNotes.filter(
+      (n) => n.year >= visibleRange.startYear && n.year <= visibleRange.endYear
+    ),
+    [allNotes, visibleRange]
+  );
 
   // Block scroll-event feedback during both sidebar animation and wheel-zoom loop
   const handleScroll = useCallback(() => {
@@ -339,6 +349,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
               pxPerYear={pxPerYear}
               visibleRange={visibleRange}
               events={eventsByYear}
+              notes={track.id === "personal" ? visibleNotes : undefined}
             />
           ))}
         </div>

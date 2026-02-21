@@ -1,10 +1,11 @@
 "use client";
 
 import React from "react";
-import { Track, ZoomMode, TimelineEvent, VisibleRange } from "@/types";
+import { Track, ZoomMode, TimelineEvent, VisibleRange, Note } from "@/types";
 import { YEAR_START } from "@/utils/constants";
 import { YearBlock } from "./YearBlock";
 import { EventDot } from "./EventDot";
+import { NoteDot } from "./NoteDot";
 import { getTickIntervalFromPx } from "@/utils/yearUtils";
 
 interface TimelineTrackProps {
@@ -13,6 +14,7 @@ interface TimelineTrackProps {
   pxPerYear: number;
   visibleRange: VisibleRange;
   events: Map<number, TimelineEvent[]>;
+  notes?: Note[];
 }
 
 function TimelineTrackInner({
@@ -21,6 +23,7 @@ function TimelineTrackInner({
   pxPerYear,
   visibleRange,
   events,
+  notes,
 }: TimelineTrackProps) {
   const tickInterval = getTickIntervalFromPx(pxPerYear);
 
@@ -36,7 +39,7 @@ function TimelineTrackInner({
     }
   }
 
-  // Collect visible events — only in years mode (pxPerYear === 500) and not animating
+  // Collect visible events — only in years mode
   const visibleEvents: TimelineEvent[] = [];
   if (mode === "years") {
     for (let y = startYear; y <= endYear; y++) {
@@ -53,8 +56,8 @@ function TimelineTrackInner({
 
   return (
     <div className="relative w-full border-b border-white/15 flex-1">
-      {/* Track label — sticky so it stays visible while scrolling */}
-      <div className="sticky top-2 left-2 text-white/50 text-xs uppercase tracking-widest z-10 pointer-events-none select-none inline-block font-medium">
+      {/* Track label — below the tick+label area so it doesn't overlap */}
+      <div className="sticky top-10 left-2 text-white/50 text-xs uppercase tracking-widest z-10 pointer-events-none select-none inline-block font-medium">
         {track.label}
       </div>
 
@@ -72,6 +75,18 @@ function TimelineTrackInner({
       {visibleEvents.map((ev) => (
         <EventDot key={ev.id} event={ev} mode={mode} />
       ))}
+
+      {/* Note dots — always visible on personal track, stacked vertically per year */}
+      {track.id === "personal" && notes && (() => {
+        const yearCount = new Map<number, number>();
+        return notes.map((note) => {
+          const idx = yearCount.get(note.year) ?? 0;
+          yearCount.set(note.year, idx + 1);
+          return (
+            <NoteDot key={note.id} note={note} pxPerYear={pxPerYear} stackIndex={idx} />
+          );
+        });
+      })()}
     </div>
   );
 }
