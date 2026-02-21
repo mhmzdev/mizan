@@ -33,6 +33,8 @@ export function getTotalWidth(mode: ZoomMode): number {
 /** Determine label interval based on zoom mode. */
 export function getLabelInterval(mode: ZoomMode): number {
   switch (mode) {
+    case "overview":
+      return 1000;
     case "centuries":
       return 100;
     case "decades":
@@ -45,6 +47,8 @@ export function getLabelInterval(mode: ZoomMode): number {
 /** Determine tick interval (minor ticks between labels). */
 export function getTickInterval(mode: ZoomMode): number {
   switch (mode) {
+    case "overview":
+      return 500;
     case "centuries":
       return 50;
     case "decades":
@@ -52,4 +56,33 @@ export function getTickInterval(mode: ZoomMode): number {
     case "years":
       return 1;
   }
+}
+
+/** Derive a named zoom mode from the live pxPerYear value. */
+export function getModeFromPxPerYear(pxPerYear: number): ZoomMode {
+  if (pxPerYear >= 100) return "years";
+  if (pxPerYear >= 10) return "decades";
+  if (pxPerYear >= 1) return "centuries";
+  return "overview";
+}
+
+/** Continuous label interval based on live pxPerYear float. */
+export function getLabelIntervalFromPx(pxPerYear: number): number {
+  if (pxPerYear >= 100) return 1;
+  if (pxPerYear >= 10) return 10;
+  if (pxPerYear >= 1) return 100;
+  return 1000;
+}
+
+/** Continuous tick interval based on live pxPerYear float. */
+export function getTickIntervalFromPx(pxPerYear: number): number {
+  if (pxPerYear >= 100) return 1;
+  if (pxPerYear >= 10) return 5;
+  if (pxPerYear >= 1) return 50;
+  return 500;
+}
+
+/** Convert a pixel offset to a year using a continuous pxPerYear float. */
+export function pxToYearContinuous(px: number, pxPerYear: number): number {
+  return Math.floor(px / pxPerYear) + YEAR_START;
 }

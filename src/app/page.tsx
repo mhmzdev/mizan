@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { TimelineContainer } from "@/components/Timeline/TimelineContainer";
+import { NotesPanel } from "@/components/Notes/NotesPanel";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { TimelineEvent } from "@/types";
@@ -30,14 +31,14 @@ export default function Home() {
     return map;
   }, [events]);
 
-  // Keyboard shortcuts for mode switching
+  // Keyboard shortcuts: 1=centuries, 2=decades, 3=years
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement) return;
-      const setMode = useTimelineStore.getState().setMode;
-      if (e.key === "1") setMode("centuries");
-      if (e.key === "2") setMode("decades");
-      if (e.key === "3") setMode("years");
+      const { setTargetPxPerYear } = useTimelineStore.getState();
+      if (e.key === "1") setTargetPxPerYear(5);    // centuries
+      if (e.key === "2") setTargetPxPerYear(50);   // decades
+      if (e.key === "3") setTargetPxPerYear(500);  // years
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -52,8 +53,9 @@ export default function Home() {
         </h1>
       </header>
 
-      {/* Main content */}
+      {/* Main content: [Notes] [Timeline] [Timeline controls] */}
       <div className="flex flex-1 min-h-0">
+        <NotesPanel />
         <TimelineContainer eventsByYear={eventsByYear} />
         <Sidebar />
       </div>

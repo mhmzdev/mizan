@@ -1,25 +1,23 @@
 "use client";
 
 import React from "react";
-import { ZoomMode } from "@/types";
-import { PX_PER_YEAR } from "@/utils/constants";
-import { formatYear, getLabelInterval } from "@/utils/yearUtils";
+import { formatYear, getLabelIntervalFromPx } from "@/utils/yearUtils";
 
 interface YearBlockProps {
   year: number;
-  mode: ZoomMode;
+  pxPerYear: number;
   offsetPx: number;
 }
 
-function YearBlockInner({ year, mode, offsetPx }: YearBlockProps) {
-  const pxPerYear = PX_PER_YEAR[mode];
-  const labelInterval = getLabelInterval(mode);
+function YearBlockInner({ year, pxPerYear, offsetPx }: YearBlockProps) {
+  const labelInterval = getLabelIntervalFromPx(pxPerYear);
   const isLabel = year % labelInterval === 0;
   const isMajorTick = isLabel;
 
-  // In year mode, every year gets a label. In decades/centuries, only at intervals.
   const showLabel = isLabel;
   const tickHeight = isMajorTick ? 16 : 8;
+
+  const fontSize = pxPerYear >= 100 ? 13 : pxPerYear >= 10 ? 12 : 11;
 
   return (
     <div
@@ -43,7 +41,7 @@ function YearBlockInner({ year, mode, offsetPx }: YearBlockProps) {
         <span
           className="text-white/80 select-none whitespace-nowrap font-mono"
           style={{
-            fontSize: mode === "years" ? 13 : mode === "decades" ? 12 : 11,
+            fontSize,
             marginTop: 4,
           }}
         >

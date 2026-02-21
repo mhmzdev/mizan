@@ -2,14 +2,15 @@
 
 import React from "react";
 import { Track, ZoomMode, TimelineEvent, VisibleRange } from "@/types";
-import { YEAR_START, PX_PER_YEAR } from "@/utils/constants";
+import { YEAR_START } from "@/utils/constants";
 import { YearBlock } from "./YearBlock";
 import { EventDot } from "./EventDot";
-import { getTickInterval } from "@/utils/yearUtils";
+import { getTickIntervalFromPx } from "@/utils/yearUtils";
 
 interface TimelineTrackProps {
   track: Track;
   mode: ZoomMode;
+  pxPerYear: number;
   visibleRange: VisibleRange;
   events: Map<number, TimelineEvent[]>;
 }
@@ -17,32 +18,25 @@ interface TimelineTrackProps {
 function TimelineTrackInner({
   track,
   mode,
+  pxPerYear,
   visibleRange,
   events,
 }: TimelineTrackProps) {
-  const pxPerYear = PX_PER_YEAR[mode];
-  const tickInterval = getTickInterval(mode);
+  const tickInterval = getTickIntervalFromPx(pxPerYear);
 
-  // Build array of years to render — only at tick/label intervals for century/decade modes
+  // Build array of years to render — only at tick intervals
   const years: number[] = [];
   const { startYear, endYear } = visibleRange;
 
-  if (mode === "years") {
-    for (let y = startYear; y <= endYear; y++) {
+  // Align to tick interval
+  const alignedStart = Math.floor(startYear / tickInterval) * tickInterval;
+  for (let y = alignedStart; y <= endYear; y += tickInterval) {
+    if (y >= startYear) {
       years.push(y);
-    }
-  } else {
-    // Align to tick interval
-    const alignedStart =
-      Math.floor(startYear / tickInterval) * tickInterval;
-    for (let y = alignedStart; y <= endYear; y += tickInterval) {
-      if (y >= startYear) {
-        years.push(y);
-      }
     }
   }
 
-  // Collect visible events
+  // Collect visible events — only in years mode (pxPerYear === 500) and not animating
   const visibleEvents: TimelineEvent[] = [];
   if (mode === "years") {
     for (let y = startYear; y <= endYear; y++) {
@@ -69,7 +63,7 @@ function TimelineTrackInner({
         <YearBlock
           key={year}
           year={year}
-          mode={mode}
+          pxPerYear={pxPerYear}
           offsetPx={(year - YEAR_START) * pxPerYear}
         />
       ))}

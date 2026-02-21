@@ -1,4 +1,4 @@
-export type ZoomMode = "centuries" | "decades" | "years";
+export type ZoomMode = "overview" | "centuries" | "decades" | "years";
 
 export interface TimelineEvent {
   id: string;

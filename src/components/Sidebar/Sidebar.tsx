@@ -2,21 +2,11 @@
 
 import React, { useState, useCallback } from "react";
 import { useTimelineStore } from "@/stores/timelineStore";
-import { ModeButton } from "./ModeButton";
-import { formatYear, yearToPx } from "@/utils/yearUtils";
-import { ZoomMode } from "@/types";
-import { ZoomIn, ZoomOut, Compass } from "lucide-react";
-
-const modes: { mode: ZoomMode; label: string; icon: React.ReactNode }[] = [
-  { mode: "centuries", label: "Centuries", icon: <ZoomOut size={14} /> },
-  { mode: "decades", label: "Decades", icon: <Compass size={14} /> },
-  { mode: "years", label: "Years", icon: <ZoomIn size={14} /> },
-];
+import { formatYear } from "@/utils/yearUtils";
+import { YEAR_START } from "@/utils/constants";
 
 export function Sidebar() {
-  const currentMode = useTimelineStore((s) => s.mode);
   const centerYear = useTimelineStore((s) => s.centerYear);
-  const setMode = useTimelineStore((s) => s.setMode);
 
   const [jumpInput, setJumpInput] = useState("");
 
@@ -29,33 +19,26 @@ export function Sidebar() {
       if (trimmed.endsWith("BC")) {
         const num = parseInt(trimmed.replace("BC", "").trim());
         if (isNaN(num)) return;
-        year = -num; // e.g., "500 BC" → -500
+        year = -num;
       } else if (trimmed.endsWith("AD")) {
         const num = parseInt(trimmed.replace("AD", "").trim());
         if (isNaN(num)) return;
-        year = num - 1; // e.g., "500 AD" → 499 (internal)
+        year = num - 1;
       } else {
         const num = parseInt(trimmed);
         if (isNaN(num)) return;
-        year = num > 0 ? num - 1 : -num; // positive → AD, negative → BC
+        year = num > 0 ? num - 1 : -num;
       }
 
-      // Clamp
       year = Math.max(-4000, Math.min(2025, year));
 
-      const state = useTimelineStore.getState();
-      const mode = state.mode;
-      const vw = state.viewportWidth;
-      const newScrollLeft = yearToPx(year, mode) - vw / 2;
-      useTimelineStore.setState({
-        scrollLeft: Math.max(0, newScrollLeft),
-        centerYear: year,
-      });
+      const { pxPerYear: px, viewportWidth } = useTimelineStore.getState();
+      const newScrollLeft = Math.max(0, (year - YEAR_START) * px - viewportWidth / 2);
+      useTimelineStore.setState({ scrollLeft: newScrollLeft, centerYear: year });
 
-      // Sync DOM
       const container = document.querySelector(".timeline-scroll");
       if (container) {
-        container.scrollLeft = Math.max(0, newScrollLeft);
+        container.scrollLeft = newScrollLeft;
       }
 
       setJumpInput("");
@@ -72,27 +55,6 @@ export function Sidebar() {
         </div>
         <div className="text-white text-2xl font-mono font-semibold">
           {formatYear(centerYear)}
-        </div>
-      </div>
-
-      {/* Separator */}
-      <div className="h-px bg-white/15" />
-
-      {/* Mode selector */}
-      <div>
-        <div className="text-white/50 text-[11px] uppercase tracking-widest mb-2.5">
-          Scale
-        </div>
-        <div className="flex flex-col gap-1.5">
-          {modes.map(({ mode, label, icon }) => (
-            <ModeButton
-              key={mode}
-              label={label}
-              mode={mode}
-              active={currentMode === mode}
-              onClick={() => setMode(mode)}
-            />
-          ))}
         </div>
       </div>
 
@@ -124,8 +86,8 @@ export function Sidebar() {
       {/* Keyboard shortcuts hint */}
       <div className="mt-auto">
         <div className="text-white/30 text-[11px] space-y-1">
-          <p>Scroll: Mouse wheel / trackpad</p>
-          <p>1/2/3: Switch modes</p>
+          <p>Scroll: Zoom</p>
+          <p>Shift + Scroll: Pan</p>
         </div>
       </div>
     </aside>
