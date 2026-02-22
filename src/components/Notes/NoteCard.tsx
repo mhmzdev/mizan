@@ -4,6 +4,8 @@ import React from "react";
 import { Note } from "@/types";
 import { formatYear } from "@/utils/yearUtils";
 import { useNotesStore } from "@/stores/notesStore";
+import { useTimelineStore } from "@/stores/timelineStore";
+import { MAX_PX_PER_YEAR, YEAR_START } from "@/utils/constants";
 
 interface NoteCardProps {
   note: Note;
@@ -12,9 +14,19 @@ interface NoteCardProps {
 export function NoteCard({ note }: NoteCardProps) {
   const openDrawer = useNotesStore((s) => s.openDrawer);
 
+  function handleClick() {
+    openDrawer(note.year, note.id);
+
+    // Navigate timeline to this note's year at max zoom
+    const { viewportWidth, setTargetPxPerYear } = useTimelineStore.getState();
+    const newScrollLeft = Math.max(0, (note.year - YEAR_START) * MAX_PX_PER_YEAR - viewportWidth / 2);
+    useTimelineStore.setState({ centerYear: note.year, scrollLeft: newScrollLeft });
+    setTargetPxPerYear(MAX_PX_PER_YEAR);
+  }
+
   return (
     <button
-      onClick={() => openDrawer(note.year, note.id)}
+      onClick={handleClick}
       className="w-full text-left px-3 py-3 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-colors"
     >
       <div className="text-amber-400/70 text-[10px] font-mono mb-1">{formatYear(note.year)}</div>
