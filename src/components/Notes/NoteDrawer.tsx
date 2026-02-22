@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { X, Link, Check } from "lucide-react";
+import { X, Link, Check, ChevronDown, Trash2 } from "lucide-react";
+import { getTimelineColor } from "@/utils/timelineColors";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNotesStore } from "@/stores/notesStore";
 import { useDialogStore } from "@/stores/dialogStore";
@@ -69,6 +70,18 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
   // Resizable drawer width
   const [drawerWidth, setDrawerWidth] = useState(MIN_DRAWER_W);
   const isResizingRef = useRef(false);
+
+  // Timeline dropdown
+  const [timelineDropdownOpen, setTimelineDropdownOpen] = useState(false);
+  const timelineDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!timelineDropdownOpen) return;
+    function onDown(e: MouseEvent) {
+      if (!timelineDropdownRef.current?.contains(e.target as Node)) setTimelineDropdownOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [timelineDropdownOpen]);
 
   // Restore drawer width from localStorage
   useEffect(() => {
@@ -198,50 +211,80 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
       </div>
 
       {/* Form */}
-      <div className="flex-1 flex flex-col gap-3.5 p-4 overflow-y-auto panel-scroll min-h-0">
-        <div className="flex flex-col">
-          <label className={labelClass}>Timeline</label>
-          <select
-            value={timelineId}
-            onChange={(e) => handleTimelineChange(Number(e.target.value))}
-            className={`${inputClass} appearance-none cursor-pointer`}
-          >
-            {timelines.map((tl) => (
-              <option key={tl.id} value={tl.id} className="bg-no-panel text-no-text">
-                {tl.title}
-              </option>
-            ))}
-          </select>
+      <div className="flex-1 flex flex-col overflow-y-auto panel-scroll min-h-0">
+
+        {/* ── Metadata: Timeline + Year ── */}
+        <div className="flex flex-col gap-2.5 px-4 pt-4 pb-4 border-b border-no-border/50">
+          {/* Custom Timeline dropdown */}
+          {(() => {
+            const idx   = timelines.findIndex((t) => t.id === timelineId);
+            const color = idx >= 0 ? getTimelineColor(idx) : "var(--color-no-muted)";
+            const name  = idx >= 0 ? timelines[idx].title : "Select timeline";
+            return (
+              <div ref={timelineDropdownRef} className="relative">
+                <button
+                  onClick={() => setTimelineDropdownOpen((v) => !v)}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-no-card border border-no-border text-[12px] transition-colors hover:border-no-blue/30"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
+                  <span className="flex-1 text-left truncate text-no-text">{name}</span>
+                  <ChevronDown
+                    size={11}
+                    className={`text-no-muted/60 shrink-0 transition-transform duration-150 ${timelineDropdownOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {timelineDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+4px)] bg-no-panel border border-no-border rounded-xl shadow-xl z-50 overflow-hidden">
+                    {timelines.map((tl, i) => {
+                      const c    = getTimelineColor(i);
+                      const isSel = tl.id === timelineId;
+                      return (
+                        <button
+                          key={tl.id}
+                          onClick={() => { handleTimelineChange(tl.id!); setTimelineDropdownOpen(false); }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors ${isSel ? "bg-no-card" : "hover:bg-no-card/60"}`}
+                          style={{ color: isSel ? c : undefined }}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: c }} />
+                          <span className="flex-1 text-left truncate">{tl.title}</span>
+                          {isSel && <Check size={10} className="shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Year */}
+          <div>
+            <input
+              type="text"
+              value={yearInput}
+              onChange={(e) => { setYearInput(e.target.value); setYearError(false); }}
+              placeholder="e.g. 500 BC or 1066 AD"
+              className={`${inputClass} font-mono ${yearError ? "border-red-500/60 focus:border-red-500" : ""}`}
+            />
+            {yearError && (
+              <p className="text-red-400 text-[12px] mt-1">Enter a valid year — e.g. &quot;500 BC&quot; or &quot;1066 AD&quot;</p>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col">
-          <label className={labelClass}>Year</label>
-          <input
-            type="text"
-            value={yearInput}
-            onChange={(e) => { setYearInput(e.target.value); setYearError(false); }}
-            placeholder="e.g. 500 BC or 1066 AD"
-            className={`${inputClass} font-mono ${yearError ? "border-red-500/60 focus:border-red-500" : ""}`}
-          />
-          {yearError && (
-            <p className="text-red-400 text-[12px] mt-1">Enter a valid year — e.g. &quot;500 BC&quot; or &quot;1066 AD&quot;</p>
-          )}
-        </div>
-
-        <div className="flex flex-col">
-          <label className={labelClass}>Title</label>
+        {/* ── Content: Title + Notes — one continuous unit ── */}
+        <div className="flex flex-col px-4 pt-5 pb-4">
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Event title"
-            className={inputClass}
+            placeholder="Title"
+            className="w-full bg-transparent text-no-text text-[1.4rem] font-semibold placeholder:text-no-muted/35 outline-none mb-4 leading-snug"
           />
-        </div>
-
-        <div className="flex flex-col flex-1 min-h-0">
-          <label className={labelClass}>Notes</label>
-          <MarkdownEditor value={content} onChange={setContent} />
+          <div className="flex items-center gap-1 mb-2">
+            <span className="text-no-muted/35 text-[11px] uppercase tracking-[0.12em]">Markdown supported</span>
+          </div>
+          <MarkdownEditor key={editingNoteId ?? "new"} value={content} onChange={setContent} />
         </div>
       </div>
 
@@ -257,9 +300,10 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
         {editingNoteId !== null && (
           <button
             onClick={handleDelete}
-            className="px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20"
+            title="Delete note"
+            className="w-10 h-10 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors border border-red-500/20 shrink-0"
           >
-            Delete
+            <Trash2 size={15} />
           </button>
         )}
       </div>

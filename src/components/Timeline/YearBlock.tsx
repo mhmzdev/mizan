@@ -16,7 +16,7 @@ function YearBlockInner({ year, pxPerYear, offsetPx, isActive, tickColor }: Year
   const labelInterval = getLabelIntervalFromPx(pxPerYear);
   const isLabel      = year % labelInterval === 0;
   const tickHeight   = isLabel ? 14 : 6;
-  const fontSize     = pxPerYear >= 100 ? 12 : pxPerYear >= 10 ? 11 : 10;
+  const fontSize     = pxPerYear >= 100 ? 14 : 12;
 
   const tickStyle = isActive && tickColor
     ? {

@@ -348,7 +348,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     }
 
     function handleTouchStart(e: TouchEvent) {
-      if (e.touches.length !== 2) return;
+      if (!el || e.touches.length !== 2) return;
       e.preventDefault();
       isPinching = true;
       pinchStartDist = getTouchDist(e.touches);

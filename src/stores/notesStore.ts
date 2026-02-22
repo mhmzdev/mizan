@@ -13,6 +13,10 @@ function writeLastTimelineId(id: number) {
   if (typeof window !== "undefined") localStorage.setItem(LAST_TIMELINE_KEY, String(id));
 }
 
+export type PendingDelete =
+  | { type: "note"; note: Note }
+  | { type: "timeline"; timeline: Timeline; notes: Note[] };
+
 interface NotesState {
   notes: Note[];
   timelines: Timeline[];
@@ -22,6 +26,8 @@ interface NotesState {
   lastTimelineId: number;
   /** The timeline currently selected inside the open drawer — used to highlight the track. */
   drawerTimelineId: number | null;
+  /** Stashed data for the last deletion — null means nothing pending. */
+  pendingDelete: PendingDelete | null;
 
   loadNotes: () => Promise<void>;
   loadTimelines: () => Promise<void>;
@@ -37,6 +43,11 @@ interface NotesState {
   saveNote: (data: {timelineId: number; year: number; title: string; content: string}) => Promise<void>;
   updateNote: (id: number, changes: {timelineId?: number; title?: string; content?: string; year?: number}) => Promise<void>;
   deleteNote: (id: number) => Promise<void>;
+
+  /** Re-insert the stashed item back into DB and restore it in state. */
+  undoDelete: () => Promise<void>;
+  /** Dismiss the undo toast without touching the DB (deletion already committed). */
+  commitDelete: () => void;
 }
 
 export const useNotesStore = create<NotesState>((set, get) => ({
@@ -47,6 +58,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   selectedYear: 0,
   lastTimelineId: readLastTimelineId(),
   drawerTimelineId: null,
+  pendingDelete: null,
 
   loadNotes: async () => {
     const notes = await db.notes.orderBy("year").toArray();
@@ -81,22 +93,30 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   },
 
   deleteTimeline: async (id) => {
-    // Delete all notes belonging to this timeline, then delete the timeline
+    const { timelines, notes, lastTimelineId } = get();
+    const timeline = timelines.find((t) => t.id === id);
+    if (!timeline) return;
+
+    const timelineNotes = notes.filter((n) => n.timelineId === id);
+    const newTimelines  = timelines.filter((t) => t.id !== id);
+    const newNotes      = notes.filter((n) => n.timelineId !== id);
+
+    // Perform DB deletes
     await db.notes.where("timelineId").equals(id).delete();
     await db.timelines.delete(id);
-    const [timelines, notes] = await Promise.all([
-      db.timelines.toArray().then((ts) => ts.sort((a, b) => a.createdAt - b.createdAt)),
-      db.notes.orderBy("year").toArray(),
-    ]);
-    // If last selected timeline was deleted, fall back to 1
-    const lastId = get().lastTimelineId;
-    const stillExists = timelines.some((t) => t.id === lastId);
+
+    // Optimistically update state + stash for undo
+    const stillExists = newTimelines.some((t) => t.id === lastTimelineId);
+    const patch: Partial<NotesState> = {
+      timelines: newTimelines,
+      notes: newNotes,
+      pendingDelete: { type: "timeline", timeline, notes: timelineNotes },
+    };
     if (!stillExists) {
       writeLastTimelineId(1);
-      set({timelines, notes, lastTimelineId: 1});
-    } else {
-      set({timelines, notes});
+      patch.lastTimelineId = 1;
     }
+    set(patch);
   },
 
   setLastTimelineId: (id) => {
@@ -128,8 +148,37 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   },
 
   deleteNote: async (id) => {
+    const note = get().notes.find((n) => n.id === id);
+    if (!note) return;
+
     await db.notes.delete(id);
-    const notes = await db.notes.orderBy("year").toArray();
-    set({notes});
+    set({
+      notes: get().notes.filter((n) => n.id !== id),
+      pendingDelete: { type: "note", note },
+    });
+  },
+
+  undoDelete: async () => {
+    const pd = get().pendingDelete;
+    if (!pd) return;
+    // Dismiss the toast immediately
+    set({ pendingDelete: null });
+
+    if (pd.type === "note") {
+      await db.notes.add(pd.note);
+      const notes = [...get().notes, pd.note].sort((a, b) => a.year - b.year);
+      set({ notes });
+    } else {
+      await db.timelines.add(pd.timeline);
+      if (pd.notes.length > 0) await db.notes.bulkAdd(pd.notes);
+      const timelines = [...get().timelines, pd.timeline].sort((a, b) => a.createdAt - b.createdAt);
+      const notes     = [...get().notes, ...pd.notes].sort((a, b) => a.year - b.year);
+      set({ timelines, notes });
+    }
+  },
+
+  commitDelete: () => {
+    // DB is already clean — just dismiss the toast.
+    set({ pendingDelete: null });
   },
 }));

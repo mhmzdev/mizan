@@ -387,10 +387,35 @@ export function Sidebar() {
       </div>
 
       {/* Shortcuts */}
-      <div className="mt-auto">
-        <div className="text-no-muted/75 text-[12px] space-y-1 font-mono">
-          <p>Scroll — Zoom</p>
-          <p>Shift+Scroll — Pan</p>
+      <div className="mt-auto pt-2 border-t border-no-border/50">
+        <div className="text-no-muted/50 text-[10px] uppercase tracking-[0.12em] font-medium mb-2.5">Shortcuts</div>
+        <div className="flex flex-col gap-1.5">
+          {/* 1/2/3 zoom levels */}
+          {([
+            ["1", "Centuries"],
+            ["2", "Decades"],
+            ["3", "Years"],
+          ] as const).map(([key, label]) => (
+            <div key={key} className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-no-card border border-no-border text-no-muted text-[11px] font-mono font-medium shrink-0">
+                {key}
+              </span>
+              <span className="text-no-muted/70 text-[12px]">{label}</span>
+            </div>
+          ))}
+          {/* Scroll shortcuts */}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-no-card border border-no-border text-no-muted text-[10px] font-mono font-medium shrink-0 whitespace-nowrap">
+              Scroll
+            </span>
+            <span className="text-no-muted/70 text-[12px]">Zoom</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center justify-center h-5 px-1.5 rounded bg-no-card border border-no-border text-no-muted text-[10px] font-mono font-medium shrink-0 whitespace-nowrap">
+              ⇧ Scroll
+            </span>
+            <span className="text-no-muted/70 text-[12px]">Pan</span>
+          </div>
         </div>
       </div>
     </aside>

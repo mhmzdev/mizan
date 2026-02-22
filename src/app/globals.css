@@ -84,6 +84,12 @@ body {
   font-family: var(--font-mono);
 }
 
+/* Undo toast progress bar — shrinks from full width to 0 */
+@keyframes undo-progress {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
 /* Active note dot — scale-pulse with expanding ring (color adapts to theme) */
 @keyframes dot-pulse {
   0%   { transform: scale(1.2);
@@ -146,119 +152,81 @@ body {
   background: var(--color-no-muted);
 }
 
-/* ── Markdown editor — theme overrides ────────────────────────────────────── */
-.md-editor-wrapper .w-md-editor {
-  background: transparent !important;
-  border: 1px solid var(--color-no-border) !important;
-  border-radius: 0.5rem !important;
-  font-family: var(--font-mono) !important;
-  box-shadow: none !important;
-  color: var(--color-no-text) !important;
+/* ── Tiptap WYSIWYG editor ─────────────────────────────────────────────────── */
+.tiptap-prose {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--color-no-text);
+  caret-color: var(--color-no-text);
 }
 
-.md-editor-wrapper .w-md-editor .w-md-editor-toolbar {
-  background: color-mix(in srgb, var(--color-no-card) 60%, transparent) !important;
-  border-bottom: 1px solid var(--color-no-border) !important;
-  border-radius: 0.5rem 0.5rem 0 0 !important;
-  padding: 2px 4px !important;
-  min-height: 32px !important;
+/* Paragraph spacing */
+.tiptap-prose p { margin: 0 0 0.45em; }
+.tiptap-prose p:last-child { margin-bottom: 0; }
+
+/* Headings */
+.tiptap-prose h1 { font-size: 2em;   font-weight: 700; margin: 0.9em 0 0.35em; color: var(--color-no-text); line-height: 1.2; }
+.tiptap-prose h2 { font-size: 1.55em; font-weight: 700; margin: 0.85em 0 0.3em; color: var(--color-no-text); line-height: 1.25; }
+.tiptap-prose h3 { font-size: 1.25em; font-weight: 600; margin: 0.8em 0 0.25em; color: var(--color-no-text); line-height: 1.3; }
+.tiptap-prose h1:first-child,
+.tiptap-prose h2:first-child,
+.tiptap-prose h3:first-child { margin-top: 0; }
+
+/* Inline */
+.tiptap-prose strong { font-weight: 700; }
+.tiptap-prose em     { font-style: italic; }
+.tiptap-prose s      { text-decoration: line-through; color: var(--color-no-muted); }
+.tiptap-prose code   { background: var(--color-no-card); color: var(--color-no-blue); border-radius: 3px; padding: 1px 5px; font-size: 0.9em; }
+
+/* Code block */
+.tiptap-prose pre {
+  background: var(--color-no-card);
+  border: 1px solid var(--color-no-border);
+  border-radius: 6px;
+  padding: 0.75em 1em;
+  margin: 0.6em 0;
+  overflow-x: auto;
+}
+.tiptap-prose pre code { background: none; padding: 0; color: var(--color-no-text); font-size: 0.85em; }
+
+/* Lists */
+.tiptap-prose ul  { list-style: disc;    padding-left: 1.4em; margin: 0.4em 0; }
+.tiptap-prose ol  { list-style: decimal; padding-left: 1.4em; margin: 0.4em 0; }
+.tiptap-prose li  { margin: 0.15em 0; }
+
+/* Blockquote */
+.tiptap-prose blockquote {
+  border-left: 3px solid var(--color-no-blue);
+  padding-left: 0.9em;
+  color: var(--color-no-muted);
+  margin: 0.5em 0;
+  font-style: italic;
 }
 
-.md-editor-wrapper .w-md-editor .w-md-editor-toolbar ul > li > button {
-  color: var(--color-no-muted) !important;
-  height: 24px !important;
-  width: 24px !important;
-}
-.md-editor-wrapper .w-md-editor .w-md-editor-toolbar ul > li > button:hover {
-  color: var(--color-no-blue) !important;
-  background: color-mix(in srgb, var(--color-no-blue) 10%, transparent) !important;
+/* Horizontal rule */
+.tiptap-prose hr { border: none; border-top: 1px solid var(--color-no-border); margin: 0.9em 0; }
+
+/* Placeholder */
+.tiptap-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-no-muted);
+  opacity: 0.45;
+  pointer-events: none;
+  float: left;
+  height: 0;
 }
 
-.md-editor-wrapper .w-md-editor .w-md-editor-toolbar ul > li.active > button {
-  color: var(--color-no-blue) !important;
+/* Links */
+.tiptap-prose a {
+  color: var(--color-no-blue);
+  text-decoration: none;
+  cursor: text;
 }
 
-/* Toolbar divider */
-.md-editor-wrapper .w-md-editor .w-md-editor-toolbar ul > li[data-name="divider"] {
-  border-left-color: var(--color-no-border) !important;
+/* Raw [text](url) brackets shown when cursor is inside a link */
+.link-raw-syntax {
+  color: var(--color-no-muted);
+  opacity: 0.6;
+  font-size: 0.85em;
 }
-
-/* Editor text area */
-.md-editor-wrapper .w-md-editor-text-input,
-.md-editor-wrapper .w-md-editor-text {
-  font-family: var(--font-mono) !important;
-  font-size: 13px !important;
-  line-height: 1.6 !important;
-  color: var(--color-no-text) !important;
-}
-
-.md-editor-wrapper .w-md-editor-text-input::placeholder {
-  color: var(--color-no-muted) !important;
-  opacity: 0.5 !important;
-}
-
-/* Preview pane */
-.md-editor-wrapper .wmde-markdown {
-  background: transparent !important;
-  font-family: var(--font-mono) !important;
-  font-size: 13px !important;
-  color: var(--color-no-text) !important;
-}
-
-.md-editor-wrapper .wmde-markdown h1,
-.md-editor-wrapper .wmde-markdown h2,
-.md-editor-wrapper .wmde-markdown h3,
-.md-editor-wrapper .wmde-markdown h4,
-.md-editor-wrapper .wmde-markdown h5,
-.md-editor-wrapper .wmde-markdown h6 {
-  color: var(--color-no-text) !important;
-  border-bottom-color: var(--color-no-border) !important;
-}
-
-.md-editor-wrapper .wmde-markdown a {
-  color: var(--color-no-blue) !important;
-}
-
-.md-editor-wrapper .wmde-markdown code {
-  background: var(--color-no-card) !important;
-  color: var(--color-no-blue) !important;
-  border-radius: 4px !important;
-  padding: 1px 4px !important;
-}
-
-.md-editor-wrapper .wmde-markdown pre {
-  background: var(--color-no-card) !important;
-  border: 1px solid var(--color-no-border) !important;
-  border-radius: 6px !important;
-}
-
-.md-editor-wrapper .wmde-markdown pre code {
-  color: var(--color-no-text) !important;
-}
-
-.md-editor-wrapper .wmde-markdown blockquote {
-  border-left-color: var(--color-no-blue) !important;
-  color: var(--color-no-muted) !important;
-}
-
-.md-editor-wrapper .wmde-markdown hr {
-  border-color: var(--color-no-border) !important;
-}
-
-.md-editor-wrapper .wmde-markdown table th,
-.md-editor-wrapper .wmde-markdown table td {
-  border-color: var(--color-no-border) !important;
-}
-
-.md-editor-wrapper .wmde-markdown table tr:nth-child(2n) {
-  background: color-mix(in srgb, var(--color-no-card) 50%, transparent) !important;
-}
-
-/* Code mirror syntax highlighting overrides */
-.md-editor-wrapper .w-md-editor .token.punctuation { color: var(--color-no-muted) !important; }
-.md-editor-wrapper .w-md-editor .token.bold { color: var(--color-no-text) !important; font-weight: bold; }
-.md-editor-wrapper .w-md-editor .token.italic { color: var(--color-no-text) !important; font-style: italic; }
-.md-editor-wrapper .w-md-editor .token.title { color: var(--color-no-blue) !important; font-weight: bold; }
-.md-editor-wrapper .w-md-editor .token.url { color: var(--color-no-blue) !important; }
-.md-editor-wrapper .w-md-editor .token.list { color: var(--color-no-gold) !important; }
-.md-editor-wrapper .w-md-editor .token.code { color: var(--color-no-blue) !important; }

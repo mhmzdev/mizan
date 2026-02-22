@@ -8,6 +8,7 @@ import { NotesPanel } from "@/components/Notes/NotesPanel";
 import { NoteDrawer } from "@/components/Notes/NoteDrawer";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UndoToast } from "@/components/ui/UndoToast";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
 import { useUrlSync } from "@/hooks/useUrlSync";
@@ -387,6 +388,7 @@ export default function Home() {
       </AnimatePresence>
 
       <ConfirmDialog />
+      <UndoToast />
     </div>
   );
 }

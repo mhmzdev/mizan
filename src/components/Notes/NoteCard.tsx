@@ -12,6 +12,10 @@ interface NoteCardProps {
   note: Note;
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/g, " ").replace(/\s+/g, " ").trim();
+}
+
 export function NoteCard({ note }: NoteCardProps) {
   const openDrawer   = useNotesStore((s) => s.openDrawer);
   const timelines    = useNotesStore((s) => s.timelines);
@@ -46,7 +50,7 @@ export function NoteCard({ note }: NoteCardProps) {
       </div>
       <div className="text-no-text/90 text-xs font-medium leading-snug truncate">{note.title}</div>
       {note.content && (
-        <div className="text-no-muted/80 text-[13px] mt-1 line-clamp-2 leading-relaxed">{note.content}</div>
+        <div className="text-no-muted/80 text-[13px] mt-1 line-clamp-2 leading-relaxed">{stripHtml(note.content)}</div>
       )}
     </button>
   );
