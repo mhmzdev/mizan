@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Link2, Check, ChevronLeft, ChevronRight, StickyNote, Layers, Sun, Moon } from "lucide-react";
+import { Link2, Check, ChevronLeft, ChevronRight, StickyNote, Layers, Sun, Moon, Play } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { TimelineContainer } from "@/components/Timeline/TimelineContainer";
 import { NotesPanel } from "@/components/Notes/NotesPanel";
@@ -9,6 +9,8 @@ import { NoteDrawer } from "@/components/Notes/NoteDrawer";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { UndoToast } from "@/components/ui/UndoToast";
+import { TourOverlay } from "@/components/Tour/TourOverlay";
+import { useTourStore } from "@/stores/tourStore";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
 import { useUrlSync } from "@/hooks/useUrlSync";
@@ -41,6 +43,10 @@ export default function Home() {
   const loadNotes     = useNotesStore((s) => s.loadNotes);
   const loadTimelines = useNotesStore((s) => s.loadTimelines);
   const drawerOpen    = useNotesStore((s) => s.drawerOpen);
+
+  const tourActive = useTourStore((s) => s.active);
+  const tourStep   = useTourStore((s) => s.step);
+  const startTour  = useTourStore((s) => s.start);
 
   const dragControls = useDragControls();
 
@@ -175,6 +181,23 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [mobileSheet]);
 
+  // Ensure the right panel is visible for each tour step
+  useEffect(() => {
+    if (!tourActive) return;
+    if (tourStep === 1) {
+      // Step 2: sidebar (timelines)
+      if (isMobile) setMobileSheet("sidebar");
+      else setSidebarOpen(true);
+    } else if (tourStep === 2) {
+      // Step 3: notes panel
+      if (isMobile) setMobileSheet("notes");
+      else setNotesOpen(true);
+    } else {
+      // Step 1: timeline — close sheets so timeline is unobstructed
+      if (isMobile) setMobileSheet(null);
+    }
+  }, [tourActive, tourStep, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleCopyViewLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
       setViewCopied(true);
@@ -201,6 +224,13 @@ export default function Home() {
           Mizan — The Balance of Time & Thought
         </h1>
         <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={startTour}
+            title="Take the tour"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
+          >
+            <Play size={12} />
+          </button>
           <button
             onClick={toggleTheme}
             title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
@@ -268,7 +298,9 @@ export default function Home() {
         <NoteDrawer panelWidth={notesPanelWidth} isMobile={isMobile} instantLeft={isResizingRef.current} />
 
         {/* Timeline — takes all remaining space */}
-        <TimelineContainer eventsByYear={eventsByYear} />
+        <div data-tour="tour-timeline" className="flex flex-1 min-w-0 overflow-hidden">
+          <TimelineContainer eventsByYear={eventsByYear} />
+        </div>
 
         {/* Sidebar collapse/expand tab */}
         {!isMobile && (
@@ -389,6 +421,7 @@ export default function Home() {
 
       <ConfirmDialog />
       <UndoToast />
+      <TourOverlay />
     </div>
   );
 }

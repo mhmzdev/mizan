@@ -21,7 +21,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       {/* Prevent flash of wrong theme — runs before first paint */}
       <head>
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('mizan_theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}` }} />

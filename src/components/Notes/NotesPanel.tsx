@@ -55,7 +55,7 @@ export function NotesPanel() {
   const isFiltered = query || rangeActive || selectedTimelineId !== null;
 
   return (
-    <aside className="w-full h-full bg-no-panel border-r border-no-border flex flex-col">
+    <aside data-tour="tour-notes" className="w-full h-full bg-no-panel border-r border-no-border flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-no-border shrink-0">
         <span className="text-no-muted text-[12px] uppercase tracking-[0.15em] font-semibold">

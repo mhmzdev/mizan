@@ -354,7 +354,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
       pinchStartDist = getTouchDist(e.touches);
       pinchStartLogPx = currentLogPxRef.current;
 
-      const rect = el.getBoundingClientRect();
+      const rect = el!.getBoundingClientRect();
       const midClientX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       pinchMidAnchorPx = midClientX - rect.left;
 
