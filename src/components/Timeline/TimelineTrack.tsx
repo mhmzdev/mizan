@@ -47,7 +47,7 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
   return (
     <div
       data-timeline-id={timeline.id}
-      className="relative w-full border-b border-no-border flex-1 transition-colors duration-300"
+      className="relative w-full border-b border-no-border flex-1 min-h-[80px] transition-colors duration-300"
       style={isActive ? { background: alphaColor(color, 4) } : undefined}
     >
       {/* Left accent stripe — glows with timeline color when active */}

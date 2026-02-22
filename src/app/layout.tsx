@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Roboto_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -11,6 +11,12 @@ const robotoMono = Roboto_Mono({
 export const metadata: Metadata = {
   title: "Mizan — The Balance of Time & Thought",
   description: "A high-performance historical timeline from 4001 BC to 2026 AD",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

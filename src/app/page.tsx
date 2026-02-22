@@ -192,7 +192,7 @@ export default function Home() {
   const panelT = isResizingRef.current ? INSTANT : PANEL_T;
 
   return (
-    <div className="h-screen flex flex-col bg-no-bg">
+    <div className="h-[100dvh] flex flex-col bg-no-bg">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="h-12 border-b border-no-border flex items-center px-5 shrink-0 bg-no-panel z-50 relative">
@@ -316,25 +316,30 @@ export default function Home() {
 
       {/* ── Mobile bottom navigation bar ───────────────────────────────────── */}
       {isMobile && (
-        <div className="h-14 border-t border-no-border bg-no-panel flex items-center justify-around shrink-0 z-50">
-          <button
-            onClick={() => setMobileSheet((s) => (s === "notes" ? null : "notes"))}
-            className={`flex flex-col items-center gap-1 px-8 py-2 rounded-xl transition-colors ${
-              mobileSheet === "notes" ? "text-no-blue" : "text-no-muted hover:text-no-blue"
-            }`}
-          >
-            <StickyNote size={19} />
-            <span className="text-[9px] uppercase tracking-wider font-semibold">Notes</span>
-          </button>
-          <button
-            onClick={() => setMobileSheet((s) => (s === "sidebar" ? null : "sidebar"))}
-            className={`flex flex-col items-center gap-1 px-8 py-2 rounded-xl transition-colors ${
-              mobileSheet === "sidebar" ? "text-no-blue" : "text-no-muted hover:text-no-blue"
-            }`}
-          >
-            <Layers size={19} />
-            <span className="text-[9px] uppercase tracking-wider font-semibold">Timelines</span>
-          </button>
+        <div
+          className="border-t border-no-border bg-no-panel shrink-0 z-50"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="h-14 flex items-center justify-around">
+            <button
+              onClick={() => setMobileSheet((s) => (s === "notes" ? null : "notes"))}
+              className={`flex flex-col items-center gap-1 px-8 py-2 rounded-xl transition-colors ${
+                mobileSheet === "notes" ? "text-no-blue" : "text-no-muted hover:text-no-blue"
+              }`}
+            >
+              <StickyNote size={19} />
+              <span className="text-[9px] uppercase tracking-wider font-semibold">Notes</span>
+            </button>
+            <button
+              onClick={() => setMobileSheet((s) => (s === "sidebar" ? null : "sidebar"))}
+              className={`flex flex-col items-center gap-1 px-8 py-2 rounded-xl transition-colors ${
+                mobileSheet === "sidebar" ? "text-no-blue" : "text-no-muted hover:text-no-blue"
+              }`}
+            >
+              <Layers size={19} />
+              <span className="text-[9px] uppercase tracking-wider font-semibold">Timelines</span>
+            </button>
+          </div>
         </div>
       )}
 

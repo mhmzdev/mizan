@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Plus, Search, StickyNote, X } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Plus, Search, StickyNote, X, ChevronDown, Check } from "lucide-react";
 import { useNotesStore } from "@/stores/notesStore";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { formatYear } from "@/utils/yearUtils";
@@ -20,6 +20,18 @@ export function NotesPanel() {
 
   const [search,             setSearch]             = useState("");
   const [selectedTimelineId, setSelectedTimelineId] = useState<number | null>(null);
+  const [dropdownOpen,       setDropdownOpen]       = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function onDown(e: MouseEvent) {
+      if (!dropdownRef.current?.contains(e.target as Node)) setDropdownOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [dropdownOpen]);
 
   // Clear timeline filter if that timeline is deleted or hidden
   useEffect(() => {
@@ -58,52 +70,69 @@ export function NotesPanel() {
         </button>
       </div>
 
-      {/* Timeline filter tabs */}
-      {showTabs && (
-        <div className="flex gap-1 px-2 py-2 border-b border-no-border shrink-0 overflow-x-auto scrollbar-none">
-          {/* All tab */}
-          <button
-            onClick={() => setSelectedTimelineId(null)}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-colors shrink-0 ${
-              selectedTimelineId === null
-                ? "bg-no-card border border-no-border text-no-text"
-                : "text-no-muted hover:text-no-text hover:bg-no-card/50"
-            }`}
-          >
-            All
-          </button>
+      {/* Timeline filter dropdown */}
+      {showTabs && (() => {
+        const selTl = selectedTimelineId !== null ? visibleTimelines.find((t) => t.id === selectedTimelineId) : null;
+        const selColor = selTl ? getTimelineColor(timelines.indexOf(selTl)) : null;
+        return (
+          <div ref={dropdownRef} className="relative px-2.5 py-2 border-b border-no-border shrink-0">
+            <button
+              onClick={() => setDropdownOpen((v) => !v)}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-no-card border border-no-border text-[12px] transition-colors hover:border-no-blue/30"
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ background: selColor ?? "var(--color-no-muted)" }}
+              />
+              <span className={`flex-1 text-left truncate ${selTl ? "text-no-text" : "text-no-muted"}`}>
+                {selTl ? selTl.title : "All Timelines"}
+              </span>
+              <ChevronDown
+                size={11}
+                className={`text-no-muted/60 shrink-0 transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`}
+              />
+            </button>
 
-          {visibleTimelines.map((tl) => {
-            const i = timelines.indexOf(tl);
-            const color   = getTimelineColor(i);
-            const isSelected = selectedTimelineId === tl.id;
-            return (
-              <button
-                key={tl.id}
-                onClick={() => setSelectedTimelineId(isSelected ? null : tl.id!)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all shrink-0 border"
-                style={{
-                  color:           isSelected ? color : undefined,
-                  borderColor:     isSelected ? alphaColor(color, 35) : "transparent",
-                  backgroundColor: isSelected ? alphaColor(color, 8) : "transparent",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) (e.currentTarget as HTMLButtonElement).style.color = color;
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) (e.currentTarget as HTMLButtonElement).style.color = "";
-                }}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ background: color }}
-                />
-                {tl.title}
-              </button>
-            );
-          })}
-        </div>
-      )}
+            {dropdownOpen && (
+              <div className="absolute left-2.5 right-2.5 top-[calc(100%-4px)] bg-no-panel border border-no-border rounded-xl shadow-xl z-50 overflow-hidden">
+                {/* All option */}
+                <button
+                  onClick={() => { setSelectedTimelineId(null); setDropdownOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors ${
+                    selectedTimelineId === null
+                      ? "text-no-text bg-no-card"
+                      : "text-no-muted hover:bg-no-card/60 hover:text-no-text"
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-no-muted/40" />
+                  <span className="flex-1 text-left">All Timelines</span>
+                  {selectedTimelineId === null && <Check size={10} className="shrink-0 text-no-blue" />}
+                </button>
+
+                {visibleTimelines.map((tl) => {
+                  const i = timelines.indexOf(tl);
+                  const color = getTimelineColor(i);
+                  const isSelected = selectedTimelineId === tl.id;
+                  return (
+                    <button
+                      key={tl.id}
+                      onClick={() => { setSelectedTimelineId(isSelected ? null : tl.id!); setDropdownOpen(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors ${
+                        isSelected ? "bg-no-card" : "hover:bg-no-card/60"
+                      }`}
+                      style={{ color: isSelected ? color : undefined }}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
+                      <span className="flex-1 text-left truncate">{tl.title}</span>
+                      {isSelected && <Check size={10} className="shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Range filter badge */}
       {rangeActive && (

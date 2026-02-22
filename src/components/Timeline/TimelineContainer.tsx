@@ -330,6 +330,83 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     };
   }, []); // refs + getState — no reactive deps needed
 
+  // Pinch-to-zoom on mobile
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    let isPinching = false;
+    let pinchStartDist = 0;
+    let pinchStartLogPx = 0;
+    let pinchMidYear = 0;
+    let pinchMidAnchorPx = 0;
+
+    function getTouchDist(touches: TouchList) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
+    }
+
+    function handleTouchStart(e: TouchEvent) {
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      isPinching = true;
+      pinchStartDist = getTouchDist(e.touches);
+      pinchStartLogPx = currentLogPxRef.current;
+
+      const rect = el.getBoundingClientRect();
+      const midClientX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      pinchMidAnchorPx = midClientX - rect.left;
+
+      const state = useTimelineStore.getState();
+      pinchMidYear = Math.floor((state.scrollLeft + pinchMidAnchorPx) / state.pxPerYear) + YEAR_START;
+
+      if (zoomRafRef.current !== null) {
+        cancelAnimationFrame(zoomRafRef.current);
+        zoomRafRef.current = null;
+      }
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+      if (!isPinching || e.touches.length !== 2) return;
+      e.preventDefault();
+
+      const newDist = getTouchDist(e.touches);
+      const scale = newDist / pinchStartDist;
+      const newLogPx = Math.max(LOG_MIN, Math.min(LOG_MAX, pinchStartLogPx + Math.log(scale)));
+      const newPx = Math.exp(newLogPx);
+
+      currentLogPxRef.current = newLogPx;
+      targetLogPxRef.current  = newLogPx;
+
+      const vw = useTimelineStore.getState().viewportWidth;
+      const newScrollLeft = Math.max(0, (pinchMidYear - YEAR_START) * newPx - pinchMidAnchorPx);
+      const newCenter = Math.floor((newScrollLeft + vw / 2) / newPx) + YEAR_START;
+
+      isSettingScroll.current = true;
+      if (containerRef.current) containerRef.current.scrollLeft = newScrollLeft;
+      requestAnimationFrame(() => { isSettingScroll.current = false; });
+
+      useTimelineStore.setState({ pxPerYear: newPx, scrollLeft: newScrollLeft, centerYear: newCenter });
+    }
+
+    function handleTouchEnd() {
+      isPinching = false;
+    }
+
+    el.addEventListener("touchstart", handleTouchStart, { passive: false });
+    el.addEventListener("touchmove",  handleTouchMove,  { passive: false });
+    el.addEventListener("touchend",   handleTouchEnd);
+    el.addEventListener("touchcancel", handleTouchEnd);
+
+    return () => {
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove",  handleTouchMove);
+      el.removeEventListener("touchend",   handleTouchEnd);
+      el.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, []); // all refs + getState — no reactive deps needed
+
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -392,7 +469,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     >
       <div
         ref={containerRef}
-        className="absolute inset-0 overflow-x-auto overflow-y-hidden timeline-scroll cursor-none"
+        className="absolute inset-0 overflow-x-auto overflow-y-auto timeline-scroll panel-scroll cursor-none"
         onScroll={handleScroll}
       >
         <div className="relative flex flex-col" style={{ width: totalWidth, minHeight: "100%" }}>
