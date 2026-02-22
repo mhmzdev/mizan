@@ -9,6 +9,7 @@ import { NoteDrawer } from "@/components/Notes/NoteDrawer";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { UndoToast } from "@/components/ui/UndoToast";
+import { MizanLogo } from "@/components/ui/MizanLogo";
 import { TourOverlay } from "@/components/Tour/TourOverlay";
 import { useTourStore } from "@/stores/tourStore";
 import { useTimelineStore } from "@/stores/timelineStore";
@@ -220,9 +221,7 @@ export default function Home() {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="h-12 border-b border-no-border flex items-center px-5 shrink-0 bg-no-panel z-50 relative">
-        <h1 className="text-no-text/70 text-[13px] font-mono tracking-[0.25em] uppercase">
-          Mizan — The Balance of Time & Thought
-        </h1>
+        <MizanLogo />
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={startTour}
