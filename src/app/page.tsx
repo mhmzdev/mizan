@@ -11,7 +11,8 @@ import { TimelineEvent } from "@/types";
 
 export default function Home() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const loadNotes = useNotesStore((s) => s.loadNotes);
+  const loadNotes     = useNotesStore((s) => s.loadNotes);
+  const loadTimelines = useNotesStore((s) => s.loadTimelines);
 
   // Load events
   useEffect(() => {
@@ -20,8 +21,8 @@ export default function Home() {
     });
   }, []);
 
-  // Load notes from IndexedDB
-  useEffect(() => { loadNotes(); }, [loadNotes]);
+  // Load persisted data from IndexedDB
+  useEffect(() => { loadTimelines(); loadNotes(); }, [loadNotes, loadTimelines]);
 
   // Build year → events lookup map
   const eventsByYear = useMemo(() => {

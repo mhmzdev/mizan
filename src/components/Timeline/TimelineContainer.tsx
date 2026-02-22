@@ -14,8 +14,7 @@ import { getVisibleRangeFromPx } from "@/utils/virtualization";
 import { pxToYearContinuous, formatYear, getModeFromPxPerYear } from "@/utils/yearUtils";
 import { PX_PER_YEAR, YEAR_START, YEAR_END, TOTAL_YEARS, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR } from "@/utils/constants";
 import { TimelineTrack } from "./TimelineTrack";
-import { tracks } from "@/data/tracks";
-import { TimelineEvent } from "@/types";
+import { TimelineEvent, Note } from "@/types";
 
 const ANIMATION_DURATION = 400; // ms — sidebar button transitions
 
@@ -73,14 +72,22 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     return pxToYearContinuous(scrollLeft + mouse.x, pxPerYear);
   }, [mouse, scrollLeft, pxPerYear]);
 
-  // Notes visible in current viewport (for personal track dots)
-  const allNotes    = useNotesStore((s) => s.notes);
-  const visibleNotes = useMemo(
-    () => allNotes.filter(
-      (n) => n.year >= visibleRange.startYear && n.year <= visibleRange.endYear
-    ),
-    [allNotes, visibleRange]
-  );
+  // Timelines + notes from store
+  const timelines = useNotesStore((s) => s.timelines);
+  const allNotes  = useNotesStore((s) => s.notes);
+
+  // Per-timeline visible notes map: timelineId → Note[]
+  const visibleNotesByTimeline = useMemo(() => {
+    const map = new Map<number, Note[]>();
+    for (const note of allNotes) {
+      if (note.year >= visibleRange.startYear && note.year <= visibleRange.endYear) {
+        const arr = map.get(note.timelineId) ?? [];
+        arr.push(note);
+        map.set(note.timelineId, arr);
+      }
+    }
+    return map;
+  }, [allNotes, visibleRange]);
 
   // Block scroll-event feedback during both sidebar animation and wheel-zoom loop
   const handleScroll = useCallback(() => {
@@ -341,15 +348,15 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
         onScroll={handleScroll}
       >
         <div className="flex flex-col" style={{ width: totalWidth, minHeight: "100%" }}>
-          {tracks.map((track) => (
+          {timelines.map((timeline) => (
             <TimelineTrack
-              key={track.id}
-              track={track}
+              key={timeline.id}
+              timeline={timeline}
               mode={mode}
               pxPerYear={pxPerYear}
               visibleRange={visibleRange}
               events={eventsByYear}
-              notes={track.id === "personal" ? visibleNotes : undefined}
+              notes={visibleNotesByTimeline.get(timeline.id!) ?? []}
             />
           ))}
         </div>

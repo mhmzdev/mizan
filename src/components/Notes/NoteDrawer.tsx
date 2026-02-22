@@ -5,7 +5,6 @@ import { X } from "lucide-react";
 import { useNotesStore } from "@/stores/notesStore";
 import { formatYear } from "@/utils/yearUtils";
 
-/** Parse a human-readable year string into an internal integer (-4000..2025). */
 function parseYearInput(raw: string): number | null {
   const trimmed = raw.trim().toUpperCase();
   let year: number;
@@ -28,19 +27,23 @@ function parseYearInput(raw: string): number | null {
 }
 
 export function NoteDrawer() {
-  const drawerOpen    = useNotesStore((s) => s.drawerOpen);
-  const editingNoteId = useNotesStore((s) => s.editingNoteId);
-  const selectedYear  = useNotesStore((s) => s.selectedYear);
-  const notes         = useNotesStore((s) => s.notes);
-  const closeDrawer   = useNotesStore((s) => s.closeDrawer);
-  const saveNote      = useNotesStore((s) => s.saveNote);
-  const updateNote    = useNotesStore((s) => s.updateNote);
-  const deleteNote    = useNotesStore((s) => s.deleteNote);
+  const drawerOpen        = useNotesStore((s) => s.drawerOpen);
+  const editingNoteId     = useNotesStore((s) => s.editingNoteId);
+  const selectedYear      = useNotesStore((s) => s.selectedYear);
+  const notes             = useNotesStore((s) => s.notes);
+  const timelines         = useNotesStore((s) => s.timelines);
+  const lastTimelineId    = useNotesStore((s) => s.lastTimelineId);
+  const closeDrawer       = useNotesStore((s) => s.closeDrawer);
+  const saveNote          = useNotesStore((s) => s.saveNote);
+  const updateNote        = useNotesStore((s) => s.updateNote);
+  const deleteNote        = useNotesStore((s) => s.deleteNote);
+  const setLastTimelineId = useNotesStore((s) => s.setLastTimelineId);
 
-  const [yearInput, setYearInput] = useState("");
-  const [yearError, setYearError] = useState(false);
-  const [title,     setTitle]     = useState("");
-  const [content,   setContent]   = useState("");
+  const [yearInput,   setYearInput]   = useState("");
+  const [yearError,   setYearError]   = useState(false);
+  const [title,       setTitle]       = useState("");
+  const [content,     setContent]     = useState("");
+  const [timelineId,  setTimelineId]  = useState<number>(lastTimelineId);
 
   // Populate form on open
   useEffect(() => {
@@ -51,14 +54,21 @@ export function NoteDrawer() {
         setYearInput(formatYear(note.year));
         setTitle(note.title);
         setContent(note.content);
+        setTimelineId(note.timelineId);
       }
     } else {
       setYearInput(formatYear(selectedYear));
       setTitle("");
       setContent("");
+      setTimelineId(lastTimelineId);
     }
     setYearError(false);
   }, [drawerOpen, editingNoteId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleTimelineChange = useCallback((id: number) => {
+    setTimelineId(id);
+    setLastTimelineId(id);
+  }, [setLastTimelineId]);
 
   const handleSave = useCallback(async () => {
     if (!title.trim()) return;
@@ -67,18 +77,18 @@ export function NoteDrawer() {
     if (parsedYear === null) { setYearError(true); return; }
 
     if (editingNoteId !== null) {
-      await updateNote(editingNoteId, { year: parsedYear, title: title.trim(), content });
+      await updateNote(editingNoteId, { timelineId, year: parsedYear, title: title.trim(), content });
     } else {
-      await saveNote({ year: parsedYear, title: title.trim(), content });
+      await saveNote({ timelineId, year: parsedYear, title: title.trim(), content });
     }
     closeDrawer();
-  }, [yearInput, title, content, editingNoteId, saveNote, updateNote, closeDrawer]);
+  }, [yearInput, title, content, timelineId, editingNoteId, saveNote, updateNote, closeDrawer]);
 
   const handleDelete = useCallback(async () => {
-    if (editingNoteId !== null) {
-      await deleteNote(editingNoteId);
-      closeDrawer();
-    }
+    if (editingNoteId === null) return;
+    if (!window.confirm("Delete this note? This cannot be undone.")) return;
+    await deleteNote(editingNoteId);
+    closeDrawer();
   }, [editingNoteId, deleteNote, closeDrawer]);
 
   if (!drawerOpen) return null;
@@ -103,7 +113,24 @@ export function NoteDrawer() {
 
       {/* Form */}
       <div className="flex-1 flex flex-col gap-3 p-4 overflow-y-auto">
-        {/* Editable year */}
+
+        {/* Timeline selector */}
+        <div className="flex flex-col gap-1">
+          <label className="text-white/40 text-[10px] uppercase tracking-widest">Timeline</label>
+          <select
+            value={timelineId}
+            onChange={(e) => handleTimelineChange(Number(e.target.value))}
+            className="w-full bg-white/5 border border-white/15 rounded-md px-3 py-2 text-white/90 text-sm focus:outline-none focus:border-white/40 appearance-none cursor-pointer"
+          >
+            {timelines.map((tl) => (
+              <option key={tl.id} value={tl.id} className="bg-zinc-900 text-white">
+                {tl.title}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Year */}
         <div className="flex flex-col gap-1">
           <label className="text-white/40 text-[10px] uppercase tracking-widest">Year</label>
           <input
@@ -120,6 +147,7 @@ export function NoteDrawer() {
           )}
         </div>
 
+        {/* Title */}
         <input
           type="text"
           value={title}
@@ -127,11 +155,13 @@ export function NoteDrawer() {
           placeholder="Event title"
           className="w-full bg-white/5 border border-white/15 rounded-md px-3 py-2 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/40"
         />
+
+        {/* Content */}
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Notes…"
-          rows={8}
+          rows={7}
           className="flex-1 w-full bg-white/5 border border-white/15 rounded-md px-3 py-2 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/40 resize-none"
         />
       </div>

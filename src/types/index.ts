@@ -1,7 +1,17 @@
 export type ZoomMode = "overview" | "centuries" | "decades" | "years";
 
+export interface Timeline {
+  id?: number;
+  title: string;
+  /** Ties this timeline to a fixed event track in events.json. Only set on default timelines. */
+  eventTrack?: "global" | "personal";
+  isDefault: boolean;
+  createdAt: number;
+}
+
 export interface Note {
   id?: number;
+  timelineId: number;
   year: number;
   title: string;
   content: string;
