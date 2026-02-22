@@ -31,7 +31,7 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
   }
 
   const visibleEvents: TimelineEvent[] = [];
-  if (mode === "years" && timeline.eventTrack) {
+  if (timeline.eventTrack) {
     for (let y = startYear; y <= endYear; y++) {
       const yearEvents = events.get(y);
       if (yearEvents) {
@@ -79,7 +79,7 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
       ))}
 
       {visibleEvents.map((ev) => (
-        <EventDot key={ev.id} event={ev} mode={mode} />
+        <EventDot key={ev.id} event={ev} pxPerYear={pxPerYear} />
       ))}
 
       {(() => {

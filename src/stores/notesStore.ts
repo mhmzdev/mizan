@@ -23,6 +23,8 @@ interface NotesState {
   drawerOpen: boolean;
   editingNoteId: number | null;
   selectedYear: number;
+  /** Pre-filled title when opening the drawer from a global event dot. */
+  pendingTitle: string;
   lastTimelineId: number;
   /** The timeline currently selected inside the open drawer — used to highlight the track. */
   drawerTimelineId: number | null;
@@ -38,7 +40,7 @@ interface NotesState {
   setLastTimelineId: (id: number) => void;
   setDrawerTimelineId: (id: number | null) => void;
 
-  openDrawer: (year: number, noteId?: number) => void;
+  openDrawer: (year: number, noteId?: number, title?: string) => void;
   closeDrawer: () => void;
   saveNote: (data: {timelineId: number; year: number; title: string; content: string}) => Promise<void>;
   updateNote: (id: number, changes: {timelineId?: number; title?: string; content?: string; year?: number}) => Promise<void>;
@@ -56,6 +58,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   drawerOpen: false,
   editingNoteId: null,
   selectedYear: 0,
+  pendingTitle: "",
   lastTimelineId: readLastTimelineId(),
   drawerTimelineId: null,
   pendingDelete: null,
@@ -126,12 +129,12 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   setDrawerTimelineId: (id) => set({drawerTimelineId: id}),
 
-  openDrawer: (year, noteId) => {
-    set({drawerOpen: true, selectedYear: year, editingNoteId: noteId ?? null});
+  openDrawer: (year, noteId, title) => {
+    set({drawerOpen: true, selectedYear: year, editingNoteId: noteId ?? null, pendingTitle: title ?? ""});
   },
 
   closeDrawer: () => {
-    set({drawerOpen: false, editingNoteId: null, drawerTimelineId: null});
+    set({drawerOpen: false, editingNoteId: null, drawerTimelineId: null, pendingTitle: ""});
   },
 
   saveNote: async (data) => {

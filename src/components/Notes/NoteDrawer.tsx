@@ -50,6 +50,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
   const drawerOpen        = useNotesStore((s) => s.drawerOpen);
   const editingNoteId     = useNotesStore((s) => s.editingNoteId);
   const selectedYear      = useNotesStore((s) => s.selectedYear);
+  const pendingTitle      = useNotesStore((s) => s.pendingTitle);
   const notes             = useNotesStore((s) => s.notes);
   const timelines         = useNotesStore((s) => s.timelines);
   const lastTimelineId    = useNotesStore((s) => s.lastTimelineId);
@@ -105,7 +106,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
       }
     } else {
       setYearInput(formatYear(selectedYear));
-      setTitle("");
+      setTitle(pendingTitle);
       setContent("");
       setTimelineId(lastTimelineId);
     }

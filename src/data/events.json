@@ -4087,6 +4087,13 @@
     "track": "global"
   },
   {
+    "id": "evt-sumer-3200",
+    "year": -3200,
+    "title": "Invention of Cuneiform Writing",
+    "description": "The Sumerians developed one of the earliest known systems of writing in Mesopotamia.",
+    "track": "global"
+  },
+  {
     "id": "evt-0621",
     "year": -3199,
     "title": "Rise of India Kingdom",
@@ -7188,6 +7195,13 @@
     "year": -2561,
     "title": "Peaceful Law of Britain",
     "description": "Fragmented existing power structures",
+    "track": "global"
+  },
+  {
+    "id": "evt-giza-2560",
+    "year": -2560,
+    "title": "Completion of the Great Pyramid of Giza",
+    "description": "The monumental tomb for Pharaoh Khufu was completed in ancient Egypt.",
     "track": "global"
   },
   {
@@ -19925,6 +19939,13 @@
     "track": "global"
   },
   {
+    "id": "evt-caesar-44",
+    "year": -44,
+    "title": "Assassination of Julius Caesar",
+    "description": "Julius Caesar was assassinated on the Ides of March, accelerating the fall of the Roman Republic.",
+    "track": "global"
+  },
+  {
     "id": "evt-3017",
     "year": -42,
     "title": "The Tall Market",
@@ -22495,6 +22516,13 @@
     "year": 476,
     "title": "The Hidden Invasion",
     "description": "Heralded the rise of a new power",
+    "track": "global"
+  },
+  {
+    "id": "evt-rome-476",
+    "year": 476,
+    "title": "Fall of the Western Roman Empire",
+    "description": "Romulus Augustulus was deposed, effectively ending the Western Roman Empire.",
     "track": "global"
   },
   {
@@ -25455,6 +25483,13 @@
     "track": "global"
   },
   {
+    "id": "evt-hastings-1066",
+    "year": 1066,
+    "title": "Battle of Hastings",
+    "description": "William the Conqueror defeated King Harold II, leading to the Norman conquest of England.",
+    "track": "global"
+  },
+  {
     "id": "evt-3855",
     "year": 1067,
     "title": "Rise of Java Harbor",
@@ -26211,6 +26246,13 @@
     "year": 1215,
     "title": "Land of Sumatra",
     "description": "Altered the religious landscape permanently",
+    "track": "global"
+  },
+  {
+    "id": "evt-magna-1215",
+    "year": 1215,
+    "title": "Magna Carta Signed",
+    "description": "King John of England agreed to the Magna Carta, placing limits on royal authority.",
     "track": "global"
   },
   {
@@ -27466,6 +27508,13 @@
     "track": "global"
   },
   {
+    "id": "evt-constantinople-1453",
+    "year": 1453,
+    "title": "Fall of Constantinople",
+    "description": "The Ottoman Empire captured the capital of the Byzantine Empire.",
+    "track": "global"
+  },
+  {
     "id": "evt-4159",
     "year": 1455,
     "title": "Rise of Siam Path",
@@ -27707,6 +27756,13 @@
     "title": "The Hidden Wall",
     "description": "Affected multiple continents simultaneously",
     "track": "personal"
+  },
+  {
+    "id": "evt-columbus-1492",
+    "year": 1492,
+    "title": "Columbus Reaches the Americas",
+    "description": "Christopher Columbus completed his first voyage across the Atlantic Ocean.",
+    "track": "global"
   },
   {
     "id": "evt-4196",
@@ -37267,6 +37323,13 @@
     "track": "global"
   },
   {
+    "id": "evt-us-1776",
+    "year": 1776,
+    "title": "United States Declaration of Independence",
+    "description": "The Thirteen Colonies declared independence from the British Empire.",
+    "track": "global"
+  },
+  {
     "id": "evt-5644",
     "year": 1777,
     "title": "Swift Ended in Khmer",
@@ -37683,6 +37746,13 @@
     "id": "evt-5707",
     "year": 1789,
     "title": "Divided the Gradual Land",
+    "track": "global"
+  },
+  {
+    "id": "evt-french-rev-1789",
+    "year": 1789,
+    "title": "French Revolution Begins",
+    "description": "The storming of the Bastille marked the beginning of massive political and social change in France.",
     "track": "global"
   },
   {
@@ -42173,6 +42243,13 @@
     "track": "personal"
   },
   {
+    "id": "evt-ww1-1914",
+    "year": 1914,
+    "title": "World War I Begins",
+    "description": "The assassination of Archduke Franz Ferdinand ignited conflict across Europe and the globe.",
+    "track": "global"
+  },
+  {
     "id": "evt-6388",
     "year": 1915,
     "title": "Second Rebuilt in Siberia",
@@ -42918,6 +42995,13 @@
     "track": "global"
   },
   {
+    "id": "evt-ww2-1939",
+    "year": 1939,
+    "title": "World War II Begins",
+    "description": "Germany invaded Poland, triggering global conflict that lasted until 1945.",
+    "track": "global"
+  },
+  {
     "id": "evt-6501",
     "year": 1940,
     "title": "The Poor War",
@@ -43254,6 +43338,13 @@
     "id": "evt-6551",
     "year": 1947,
     "title": "Violent Invented in Songhai",
+    "track": "global"
+  },
+  {
+    "id": "evt-pak-1947",
+    "year": 1947,
+    "title": "Formation of Pakistan",
+    "description": "Pakistan emerged as an independent state following the partition of India.",
     "track": "global"
   },
   {
@@ -46024,6 +46115,13 @@
     "year": 2019,
     "title": "Famous Rebellion of India",
     "description": "Revolutionized communication methods",
+    "track": "global"
+  },
+  {
+    "id": "evt-covid-2019",
+    "year": 2019,
+    "title": "COVID-19 Pandemic Begins",
+    "description": "A novel coronavirus, SARS-CoV-2, was identified in Wuhan, China, eventually causing a global pandemic.",
     "track": "global"
   },
   {

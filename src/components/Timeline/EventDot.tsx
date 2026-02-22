@@ -1,22 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
-import { TimelineEvent, ZoomMode } from "@/types";
-import { PX_PER_YEAR, YEAR_START } from "@/utils/constants";
+import React, { useState, useCallback } from "react";
+import { TimelineEvent } from "@/types";
+import { YEAR_START } from "@/utils/constants";
 import { formatYear } from "@/utils/yearUtils";
+import { useNotesStore } from "@/stores/notesStore";
 
 interface EventDotProps {
   event: TimelineEvent;
-  mode: ZoomMode;
+  pxPerYear: number;
 }
 
-function EventDotInner({ event, mode }: EventDotProps) {
+function EventDotInner({ event, pxPerYear }: EventDotProps) {
   const [hovered, setHovered] = useState(false);
 
-  if (mode !== "years") return null;
+  const leftPx = (event.year - YEAR_START) * pxPerYear + pxPerYear / 2;
 
-  const pxPerYear = PX_PER_YEAR[mode];
-  const leftPx    = (event.year - YEAR_START) * pxPerYear + pxPerYear / 2;
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    useNotesStore.getState().openDrawer(event.year, undefined, event.title);
+  }, [event.year, event.title]);
 
   return (
     <div
@@ -24,6 +27,7 @@ function EventDotInner({ event, mode }: EventDotProps) {
       style={{ left: leftPx, top: 40, zIndex: hovered ? 50 : 10 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={handleClick}
     >
       {/* Expanding ring */}
       <div
