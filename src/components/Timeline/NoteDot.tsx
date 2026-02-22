@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Note } from "@/types";
 import { YEAR_START } from "@/utils/constants";
@@ -24,13 +24,14 @@ export function NoteDot({ note, pxPerYear, stackIndex, color }: NoteDotProps) {
   const editingNoteId = useNotesStore((s) => s.editingNoteId);
   const drawerOpen    = useNotesStore((s) => s.drawerOpen);
 
+  const [hovered, setHovered] = useState(false);
+
   const isActive = drawerOpen && note.id === editingNoteId;
 
   const left = (note.year - YEAR_START) * pxPerYear + pxPerYear / 2;
   const top  = STACK_TOP + stackIndex * (DOT_SIZE + DOT_GAP);
 
   const dotColor      = isActive ? ACTIVE_DOT_COLOR : color;
-  // 30% opacity glow using the timeline's own color
   const inactiveGlow  = `0 0 8px 2px ${alphaColor(color, 30)}`;
   const inactiveHover = `0 0 12px 3px ${alphaColor(color, 45)}`;
 
@@ -53,17 +54,32 @@ export function NoteDot({ note, pxPerYear, stackIndex, color }: NoteDotProps) {
         style={{
           backgroundColor: dotColor,
           boxShadow: isActive ? undefined : inactiveGlow,
-          // Apply hover glow via CSS custom property trick isn't possible inline,
-          // so we rely on the static glow; hover scale is enough visual feedback.
         }}
         onMouseEnter={(e) => {
+          setHovered(true);
           if (!isActive) (e.currentTarget as HTMLButtonElement).style.boxShadow = inactiveHover;
         }}
         onMouseLeave={(e) => {
+          setHovered(false);
           if (!isActive) (e.currentTarget as HTMLButtonElement).style.boxShadow = inactiveGlow;
         }}
       />
 
+      {/* Hover tooltip — shown below the dot when not active */}
+      {hovered && !isActive && (
+        <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 pointer-events-none z-50">
+          <div className="bg-no-panel border border-no-border/80 rounded-lg px-2.5 py-1.5 shadow-xl whitespace-nowrap">
+            <p className="text-no-text text-[12px] font-medium leading-snug">
+              {note.title || "Untitled"}
+            </p>
+            <p className="text-no-muted text-[10px] font-mono mt-0.5">
+              {formatYear(note.year)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Active card — shown below when the drawer is open for this note */}
       <AnimatePresence>
         {isActive && (
           <motion.div

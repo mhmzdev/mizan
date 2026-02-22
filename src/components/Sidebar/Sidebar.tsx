@@ -6,7 +6,7 @@ import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
 import { useDialogStore } from "@/stores/dialogStore";
 import { formatYear } from "@/utils/yearUtils";
-import { YEAR_START, YEAR_END, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR } from "@/utils/constants";
+import { YEAR_START, YEAR_END, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR, PX_PER_YEAR } from "@/utils/constants";
 
 function parseYear(raw: string): number | null {
   const t = raw.trim().toUpperCase();
@@ -78,17 +78,11 @@ export function Sidebar() {
 
       year = Math.max(-4000, Math.min(2025, year));
 
-      const { pxPerYear: px, viewportWidth } = useTimelineStore.getState();
-      const newScrollLeft = Math.max(0, (year - YEAR_START) * px - viewportWidth / 2);
-      useTimelineStore.setState({ scrollLeft: newScrollLeft, centerYear: year });
-
-      const container = document.querySelector(".timeline-scroll");
-      if (container) container.scrollLeft = newScrollLeft;
-
+      setPendingNav({ year, zoom: PX_PER_YEAR.years });
       setJumpInput("");
       closeDrawer();
     },
-    [jumpInput, closeDrawer]
+    [jumpInput, setPendingNav, closeDrawer]
   );
 
   const handleApplyRange = useCallback(

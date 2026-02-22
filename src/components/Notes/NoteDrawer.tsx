@@ -112,7 +112,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
     }
     setYearError(false);
     setDrawerTimelineId(resolvedTimelineId);
-  }, [drawerOpen, editingNoteId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [drawerOpen, editingNoteId, pendingTitle, selectedYear]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTimelineChange = useCallback((id: number) => {
     setTimelineId(id);

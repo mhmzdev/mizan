@@ -6,8 +6,10 @@ import { YEAR_START } from "@/utils/constants";
 import { YearBlock } from "./YearBlock";
 import { EventDot } from "./EventDot";
 import { NoteDot } from "./NoteDot";
+import { HistographyLayer } from "./HistographyLayer";
 import { getTickIntervalFromPx } from "@/utils/yearUtils";
 import { getTimelineColor, alphaColor } from "@/utils/timelineColors";
+import { clusterEvents } from "@/utils/clusterEvents";
 
 interface TimelineTrackProps {
   timeline: Timeline;
@@ -21,6 +23,7 @@ interface TimelineTrackProps {
 }
 
 function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleRange, events, notes, isActive }: TimelineTrackProps) {
+  const isGlobalTrack = timeline.eventTrack === "global";
   const tickInterval = getTickIntervalFromPx(pxPerYear);
   const { startYear, endYear } = visibleRange;
 
@@ -47,7 +50,7 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
   return (
     <div
       data-timeline-id={timeline.id}
-      className="relative w-full border-b border-no-border flex-1 min-h-[80px] transition-colors duration-300"
+      className={`relative w-full border-b border-no-border flex-1 transition-colors duration-300 ${isGlobalTrack ? "min-h-[120px]" : "min-h-[80px]"}`}
       style={isActive ? { background: alphaColor(color, 4) } : undefined}
     >
       {/* Left accent stripe — glows with timeline color when active */}
@@ -78,9 +81,12 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
         />
       ))}
 
-      {visibleEvents.map((ev) => (
-        <EventDot key={ev.id} event={ev} pxPerYear={pxPerYear} />
-      ))}
+      {timeline.eventTrack === "global"
+        ? <HistographyLayer events={visibleEvents} pxPerYear={pxPerYear} />
+        : clusterEvents(visibleEvents, pxPerYear).map((cluster) => (
+            <EventDot key={cluster.events[0].id} cluster={cluster} pxPerYear={pxPerYear} />
+          ))
+      }
 
       {(() => {
         const yearCount = new Map<number, number>();

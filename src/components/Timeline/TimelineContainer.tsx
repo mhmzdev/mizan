@@ -107,16 +107,28 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     setScrollLeft(containerRef.current.scrollLeft);
   }, [setScrollLeft]);
 
-  // Initial mount: center on 1 BC in centuries scale
+  // Initial mount: position at centuries-50 then fire landing animation to centuries
   useLayoutEffect(() => {
     if (!containerRef.current) return;
-    const vw = containerRef.current.clientWidth;
-    const initialPx = PX_PER_YEAR.centuries;
-    const initialScroll = Math.max(0, (-1 - YEAR_START) * initialPx - vw / 2);
+    const vw        = containerRef.current.clientWidth;
+    const targetPx  = PX_PER_YEAR.centuries;
+    const startPx   = Math.max(MIN_PX_PER_YEAR, targetPx - 50);
+    const startScroll = Math.max(0, (-1 - YEAR_START) * startPx - vw / 2);
+
+    currentLogPxRef.current = Math.log(startPx);
+    targetLogPxRef.current  = Math.log(startPx);
+
     isSettingScroll.current = true;
-    containerRef.current.scrollLeft = initialScroll;
-    useTimelineStore.setState({ scrollLeft: initialScroll, centerYear: -1, viewportWidth: vw });
+    containerRef.current.scrollLeft = startScroll;
     requestAnimationFrame(() => { isSettingScroll.current = false; });
+
+    useTimelineStore.setState({
+      scrollLeft: startScroll,
+      centerYear: -1,
+      viewportWidth: vw,
+      pxPerYear:  startPx,
+      pendingNav: { year: -1, zoom: targetPx },
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resize observer
@@ -130,14 +142,14 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     return () => observer.disconnect();
   }, [setViewportWidth]);
 
-  // Instant navigation from URL deep-link (pendingNav set by useUrlSync / page.tsx)
+  // Landing animation: triggered by any navigation (jump, note tap, event tap, page load)
+  // Starts 50 px/yr below the target zoom, then eases in over 400 ms anchored to the target year.
   useEffect(() => {
     if (!pendingNav || viewportWidth <= 0 || !containerRef.current) return;
 
     const { year, zoom } = pendingNav;
-    const newScroll = Math.max(0, (year - YEAR_START) * zoom - viewportWidth / 2);
 
-    // Cancel any in-flight sidebar animation or wheel-zoom loop
+    // Cancel any in-flight animations
     if (animFrameRef.current !== null) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current   = null;
@@ -148,21 +160,65 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
       zoomRafRef.current = null;
     }
 
-    // Sync zoom refs so the next wheel gesture continues from here
-    currentLogPxRef.current = Math.log(zoom);
-    targetLogPxRef.current  = Math.log(zoom);
+    // Start 50 px/yr below the target (clamped to minimum)
+    const startZoom   = Math.max(MIN_PX_PER_YEAR, zoom - 50);
+    const startScroll = Math.max(0, (year - YEAR_START) * startZoom - viewportWidth / 2);
 
-    // Apply to DOM and store in one shot
+    currentLogPxRef.current = Math.log(startZoom);
+    targetLogPxRef.current  = Math.log(startZoom);
+
     isSettingScroll.current = true;
-    containerRef.current.scrollLeft = newScroll;
+    containerRef.current.scrollLeft = startScroll;
     requestAnimationFrame(() => { isSettingScroll.current = false; });
 
     useTimelineStore.setState({
-      pxPerYear:  zoom,
-      scrollLeft: newScroll,
+      pxPerYear:  startZoom,
+      scrollLeft: startScroll,
       centerYear: year,
       pendingNav: null,
     });
+
+    if (startZoom === zoom) return; // already at target, nothing to animate
+
+    // Animate startZoom → zoom, keeping `year` centred throughout
+    isAnimatingRef.current = true;
+    const startTime = performance.now();
+    const container = containerRef.current;
+
+    function tick(now: number) {
+      const t      = Math.min((now - startTime) / ANIMATION_DURATION, 1);
+      const eased  = easeOutExpo(t);
+      const newPx  = startZoom + (zoom - startZoom) * eased;
+
+      const vw            = useTimelineStore.getState().viewportWidth;
+      const newScrollLeft = Math.max(0, (year - YEAR_START) * newPx - vw / 2);
+      const newCenterYear = Math.floor((newScrollLeft + vw / 2) / newPx) + YEAR_START;
+
+      isSettingScroll.current = true;
+      container.scrollLeft = newScrollLeft;
+      requestAnimationFrame(() => { isSettingScroll.current = false; });
+
+      useTimelineStore.setState({ pxPerYear: newPx, scrollLeft: newScrollLeft, centerYear: newCenterYear });
+
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(tick);
+      } else {
+        currentLogPxRef.current = Math.log(zoom);
+        targetLogPxRef.current  = Math.log(zoom);
+        isAnimatingRef.current  = false;
+        animFrameRef.current    = null;
+      }
+    }
+
+    animFrameRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current   = null;
+        isAnimatingRef.current = false;
+      }
+    };
   }, [pendingNav, viewportWidth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sidebar button animation (400 ms ease-out-expo)
