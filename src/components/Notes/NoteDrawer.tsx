@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { X, Link, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNotesStore } from "@/stores/notesStore";
 import { useDialogStore } from "@/stores/dialogStore";
 import { formatYear } from "@/utils/yearUtils";
 import { buildNoteUrl } from "@/hooks/useUrlSync";
+import { MarkdownEditor } from "./MarkdownEditor";
+
+const MIN_DRAWER_W = 320;
+const MAX_DRAWER_W = 700;
+const STORAGE_KEY = "mizan_drawer_width";
 
 function parseYearInput(raw: string): number | null {
   const trimmed = raw.trim().toUpperCase();
@@ -60,6 +65,18 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
   const [content,     setContent]    = useState("");
   const [timelineId,  setTimelineId] = useState<number>(lastTimelineId);
   const [linkCopied,  setLinkCopied] = useState(false);
+
+  // Resizable drawer width
+  const [drawerWidth, setDrawerWidth] = useState(MIN_DRAWER_W);
+  const isResizingRef = useRef(false);
+
+  // Restore drawer width from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved !== null) {
+      setDrawerWidth(Math.max(MIN_DRAWER_W, Math.min(MAX_DRAWER_W, parseInt(saved))));
+    }
+  }, []);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -125,6 +142,31 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
     closeDrawer();
   }, [editingNoteId, deleteNote, closeDrawer]);
 
+  function startResizeDrawer(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    isResizingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const startX = e.clientX;
+    const startW = drawerWidth;
+    function onMove(ev: MouseEvent) {
+      setDrawerWidth(Math.max(MIN_DRAWER_W, Math.min(MAX_DRAWER_W, startW + ev.clientX - startX)));
+    }
+    function onUp(ev: MouseEvent) {
+      const w = Math.max(MIN_DRAWER_W, Math.min(MAX_DRAWER_W, startW + ev.clientX - startX));
+      setDrawerWidth(w);
+      localStorage.setItem(STORAGE_KEY, String(w));
+      isResizingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
   // Shared inner content — reused by both mobile and desktop variants
   const drawerBody = (
     <>
@@ -156,7 +198,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
       </div>
 
       {/* Form */}
-      <div className="flex-1 flex flex-col gap-3.5 p-4 overflow-y-auto panel-scroll">
+      <div className="flex-1 flex flex-col gap-3.5 p-4 overflow-y-auto panel-scroll min-h-0">
         <div className="flex flex-col">
           <label className={labelClass}>Timeline</label>
           <select
@@ -182,7 +224,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
             className={`${inputClass} font-mono ${yearError ? "border-red-500/60 focus:border-red-500" : ""}`}
           />
           {yearError && (
-            <p className="text-red-400 text-[12px] mt-1">Enter a valid year — e.g. "500 BC" or "1066 AD"</p>
+            <p className="text-red-400 text-[12px] mt-1">Enter a valid year — e.g. &quot;500 BC&quot; or &quot;1066 AD&quot;</p>
           )}
         </div>
 
@@ -197,15 +239,9 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
           />
         </div>
 
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 min-h-0">
           <label className={labelClass}>Notes</label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Write your notes…"
-            rows={7}
-            className={`${inputClass} resize-none flex-1`}
-          />
+          <MarkdownEditor value={content} onChange={setContent} />
         </div>
       </div>
 
@@ -248,22 +284,32 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
           </motion.div>
         ) : (
           /* ── Desktop: slides in from the left, beside the notes panel ── */
-          <motion.div
-            key="desktop-drawer"
-            initial={{ x: -12, opacity: 0, left: panelWidth }}
-            animate={{ x: 0,   opacity: 1, left: panelWidth }}
-            exit={{   x: -12, opacity: 0 }}
-            transition={{
-              x:       { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
-              opacity: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
-              left:    instantLeft ? { duration: 0 } : { type: "tween", duration: 0.22, ease: [0.4, 0, 0.2, 1] },
-            }}
-            className="absolute top-0 bottom-0 w-80 bg-no-bg/80 backdrop-blur-md border-r border-no-border/60 flex flex-col z-[55] supports-[backdrop-filter]:bg-no-bg/75"
-            style={{ boxShadow: "var(--drawer-shadow)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {drawerBody}
-          </motion.div>
+          <>
+            <motion.div
+              key="desktop-drawer"
+              initial={{ x: -12, opacity: 0, left: panelWidth }}
+              animate={{ x: 0,   opacity: 1, left: panelWidth }}
+              exit={{   x: -12, opacity: 0 }}
+              transition={{
+                x:       { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+                left:    instantLeft ? { duration: 0 } : { type: "tween", duration: 0.22, ease: [0.4, 0, 0.2, 1] },
+              }}
+              className="absolute top-0 bottom-0 bg-no-bg/80 backdrop-blur-md border-r border-no-border/60 flex flex-col z-[55] supports-[backdrop-filter]:bg-no-bg/75"
+              style={{ width: drawerWidth, boxShadow: "var(--drawer-shadow)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {drawerBody}
+
+              {/* Resize handle — right edge */}
+              <div
+                className="absolute top-0 bottom-0 right-[-5px] w-[10px] z-[56] cursor-col-resize select-none group"
+                onMouseDown={startResizeDrawer}
+              >
+                <div className="absolute inset-y-0 left-[4px] w-px bg-no-blue/0 group-hover:bg-no-blue/50 transition-colors duration-150" />
+              </div>
+            </motion.div>
+          </>
         )
       )}
     </AnimatePresence>

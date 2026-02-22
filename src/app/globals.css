@@ -145,3 +145,120 @@ body {
 .panel-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--color-no-muted);
 }
+
+/* ── Markdown editor — theme overrides ────────────────────────────────────── */
+.md-editor-wrapper .w-md-editor {
+  background: transparent !important;
+  border: 1px solid var(--color-no-border) !important;
+  border-radius: 0.5rem !important;
+  font-family: var(--font-mono) !important;
+  box-shadow: none !important;
+  color: var(--color-no-text) !important;
+}
+
+.md-editor-wrapper .w-md-editor .w-md-editor-toolbar {
+  background: color-mix(in srgb, var(--color-no-card) 60%, transparent) !important;
+  border-bottom: 1px solid var(--color-no-border) !important;
+  border-radius: 0.5rem 0.5rem 0 0 !important;
+  padding: 2px 4px !important;
+  min-height: 32px !important;
+}
+
+.md-editor-wrapper .w-md-editor .w-md-editor-toolbar ul > li > button {
+  color: var(--color-no-muted) !important;
+  height: 24px !important;
+  width: 24px !important;
+}
+.md-editor-wrapper .w-md-editor .w-md-editor-toolbar ul > li > button:hover {
+  color: var(--color-no-blue) !important;
+  background: color-mix(in srgb, var(--color-no-blue) 10%, transparent) !important;
+}
+
+.md-editor-wrapper .w-md-editor .w-md-editor-toolbar ul > li.active > button {
+  color: var(--color-no-blue) !important;
+}
+
+/* Toolbar divider */
+.md-editor-wrapper .w-md-editor .w-md-editor-toolbar ul > li[data-name="divider"] {
+  border-left-color: var(--color-no-border) !important;
+}
+
+/* Editor text area */
+.md-editor-wrapper .w-md-editor-text-input,
+.md-editor-wrapper .w-md-editor-text {
+  font-family: var(--font-mono) !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  color: var(--color-no-text) !important;
+}
+
+.md-editor-wrapper .w-md-editor-text-input::placeholder {
+  color: var(--color-no-muted) !important;
+  opacity: 0.5 !important;
+}
+
+/* Preview pane */
+.md-editor-wrapper .wmde-markdown {
+  background: transparent !important;
+  font-family: var(--font-mono) !important;
+  font-size: 13px !important;
+  color: var(--color-no-text) !important;
+}
+
+.md-editor-wrapper .wmde-markdown h1,
+.md-editor-wrapper .wmde-markdown h2,
+.md-editor-wrapper .wmde-markdown h3,
+.md-editor-wrapper .wmde-markdown h4,
+.md-editor-wrapper .wmde-markdown h5,
+.md-editor-wrapper .wmde-markdown h6 {
+  color: var(--color-no-text) !important;
+  border-bottom-color: var(--color-no-border) !important;
+}
+
+.md-editor-wrapper .wmde-markdown a {
+  color: var(--color-no-blue) !important;
+}
+
+.md-editor-wrapper .wmde-markdown code {
+  background: var(--color-no-card) !important;
+  color: var(--color-no-blue) !important;
+  border-radius: 4px !important;
+  padding: 1px 4px !important;
+}
+
+.md-editor-wrapper .wmde-markdown pre {
+  background: var(--color-no-card) !important;
+  border: 1px solid var(--color-no-border) !important;
+  border-radius: 6px !important;
+}
+
+.md-editor-wrapper .wmde-markdown pre code {
+  color: var(--color-no-text) !important;
+}
+
+.md-editor-wrapper .wmde-markdown blockquote {
+  border-left-color: var(--color-no-blue) !important;
+  color: var(--color-no-muted) !important;
+}
+
+.md-editor-wrapper .wmde-markdown hr {
+  border-color: var(--color-no-border) !important;
+}
+
+.md-editor-wrapper .wmde-markdown table th,
+.md-editor-wrapper .wmde-markdown table td {
+  border-color: var(--color-no-border) !important;
+}
+
+.md-editor-wrapper .wmde-markdown table tr:nth-child(2n) {
+  background: color-mix(in srgb, var(--color-no-card) 50%, transparent) !important;
+}
+
+/* Code mirror syntax highlighting overrides */
+.md-editor-wrapper .w-md-editor .token.punctuation { color: var(--color-no-muted) !important; }
+.md-editor-wrapper .w-md-editor .token.bold { color: var(--color-no-text) !important; font-weight: bold; }
+.md-editor-wrapper .w-md-editor .token.italic { color: var(--color-no-text) !important; font-style: italic; }
+.md-editor-wrapper .w-md-editor .token.title { color: var(--color-no-blue) !important; font-weight: bold; }
+.md-editor-wrapper .w-md-editor .token.url { color: var(--color-no-blue) !important; }
+.md-editor-wrapper .w-md-editor .token.list { color: var(--color-no-gold) !important; }
+.md-editor-wrapper .w-md-editor .token.code { color: var(--color-no-blue) !important; }
