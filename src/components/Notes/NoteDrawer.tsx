@@ -30,7 +30,7 @@ function parseYearInput(raw: string): number | null {
 }
 
 const inputClass =
-  "w-full bg-[#1A1C1E]/60 border border-no-border/70 rounded-lg px-3 py-2 text-no-text text-sm placeholder:text-no-muted/50 focus:outline-none focus:border-no-blue/50 transition-colors";
+  "w-full bg-no-bg/60 border border-no-border/70 rounded-lg px-3 py-2 text-no-text text-sm placeholder:text-no-muted/50 focus:outline-none focus:border-no-blue/50 transition-colors";
 
 const labelClass = "text-no-muted text-[12px] uppercase tracking-[0.12em] font-medium mb-1";
 
@@ -165,7 +165,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
             className={`${inputClass} appearance-none cursor-pointer`}
           >
             {timelines.map((tl) => (
-              <option key={tl.id} value={tl.id} className="bg-[#1F2226] text-[#E1E2E5]">
+              <option key={tl.id} value={tl.id} className="bg-no-panel text-no-text">
                 {tl.title}
               </option>
             ))}
@@ -214,7 +214,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
         <button
           onClick={handleSave}
           disabled={!title.trim()}
-          className="flex-1 bg-no-blue hover:bg-[#5B8FFF] disabled:opacity-40 disabled:cursor-not-allowed text-[#1A1C1E] text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors"
+          className="flex-1 bg-no-blue hover:bg-no-blue-dim disabled:opacity-40 disabled:cursor-not-allowed text-no-blue-fg text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors"
         >
           Save
         </button>
@@ -241,7 +241,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "tween", duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed inset-0 bg-[#1A1C1E] flex flex-col z-[70]"
+            className="fixed inset-0 bg-no-bg flex flex-col z-[70]"
             onClick={(e) => e.stopPropagation()}
           >
             {drawerBody}
@@ -258,7 +258,8 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
               opacity: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
               left:    instantLeft ? { duration: 0 } : { type: "tween", duration: 0.22, ease: [0.4, 0, 0.2, 1] },
             }}
-            className="absolute top-0 bottom-0 w-80 bg-[#1A1C1E]/80 backdrop-blur-md border-r border-no-border/60 flex flex-col z-[55] shadow-[4px_0_40px_rgba(0,0,0,0.6)] supports-[backdrop-filter]:bg-[#1A1C1E]/75"
+            className="absolute top-0 bottom-0 w-80 bg-no-bg/80 backdrop-blur-md border-r border-no-border/60 flex flex-col z-[55] supports-[backdrop-filter]:bg-no-bg/75"
+            style={{ boxShadow: "var(--drawer-shadow)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {drawerBody}

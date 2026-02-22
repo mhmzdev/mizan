@@ -1,27 +1,72 @@
 @import "tailwindcss";
 
-/* ── Nordic Obsidian theme tokens ─────────────────────────────────────────── */
+/* ── Theme tokens ──────────────────────────────────────────────────────────── */
 @theme {
-  /* Font — resolved at runtime from next/font CSS variable */
+  /* Font */
   --font-mono: var(--font-roboto-mono), ui-monospace, monospace;
 
-  /* Palette */
-  --color-no-bg: #1A1C1E;
-  /* page background        */
-  --color-no-panel: #1F2226;
-  /* sidebars, panel bg     */
-  --color-no-card: #252A30;
-  /* cards, inputs, items   */
-  --color-no-border: #2F3337;
-  /* dividers & borders     */
-  --color-no-text: #E1E2E5;
-  /* primary text           */
-  --color-no-muted: #6C7380;
-  /* secondary / muted text */
-  --color-no-blue: #74A0FF;
-  /* electric blue accent   */
-  --color-no-gold: #FFD700;
-  /* gold accent            */
+  /* ── Dark theme — "Nordic Obsidian" (default) ── */
+  --color-no-bg:       #1A1C1E;
+  --color-no-panel:    #1F2226;
+  --color-no-card:     #252A30;
+  --color-no-border:   #2F3337;
+  --color-no-text:     #E1E2E5;
+  --color-no-muted:    #6C7380;
+  --color-no-blue:     #74A0FF;
+  --color-no-blue-fg:  #1A1C1E;   /* text on no-blue buttons */
+  --color-no-blue-dim: #5B8FFF;   /* hover state of no-blue */
+  --color-no-gold:     #FFD700;
+}
+
+/* ── Light theme — "Academic Manuscript" ──────────────────────────────────── */
+html[data-theme="light"] {
+  --color-no-bg:       #F9F7F2;
+  --color-no-panel:    #F0EDE4;
+  --color-no-card:     #E8E4D9;
+  --color-no-border:   #D5D0C4;
+  --color-no-text:     #2C2921;
+  --color-no-muted:    #7A6B58;
+  --color-no-blue:     #8B4513;   /* saddle brown — the "ink" accent */
+  --color-no-blue-fg:  #F9F7F2;   /* light text on dark-brown button */
+  --color-no-blue-dim: #7A3B1A;   /* hover state of no-blue */
+  --color-no-gold:     #A0720A;
+}
+
+/* ── Non-token CSS vars — range overlays, dot pulse, timeline palette ─────── */
+:root {
+  --range-overlay:  rgba(10, 12, 14, 0.62);
+  --range-line:     rgba(116, 160, 255, 0.7);
+  --range-glow:     rgba(116, 160, 255, 0.25);
+  --drawer-shadow:  4px 0 40px rgba(0, 0, 0, 0.55);
+
+  /* Active dot + pulse glow color */
+  --active-dot-color: #ffffff;
+  --dot-pulse-color:  #ffffff;
+
+  /* Per-timeline palette — dark defaults */
+  --t-color-0: #74A0FF;   /* blue  — Global History */
+  --t-color-1: #FFD700;   /* gold  — Personal */
+  --t-color-2: #FF6B9D;   /* rose */
+  --t-color-3: #4ECCA3;   /* teal */
+  --t-color-4: #FF9F43;   /* amber */
+}
+
+html[data-theme="light"] {
+  --range-overlay:  rgba(100, 88, 76, 0.42);
+  --range-line:     rgba(139, 69, 19, 0.65);
+  --range-glow:     rgba(139, 69, 19, 0.15);
+  --drawer-shadow:  4px 0 40px rgba(0, 0, 0, 0.12);
+
+  /* Active dot visible on parchment */
+  --active-dot-color: #2c2921;
+  --dot-pulse-color:  #2c2921;
+
+  /* Per-timeline palette — darker shades readable on parchment */
+  --t-color-0: #2A5FD4;   /* deeper blue */
+  --t-color-1: #9B6800;   /* dark amber — replaces bright yellow */
+  --t-color-2: #C2185B;   /* deep rose */
+  --t-color-3: #1A7A5E;   /* forest teal */
+  --t-color-4: #C45000;   /* burnt orange */
 }
 
 html {
@@ -32,41 +77,32 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #1A1C1E;
-  color: #E1E2E5;
+  background: var(--color-no-bg);
+  color: var(--color-no-text);
   overflow: hidden;
   height: 100%;
   font-family: var(--font-mono);
 }
 
-/* Active note dot — scale-pulse with expanding white ring */
+/* Active note dot — scale-pulse with expanding ring (color adapts to theme) */
 @keyframes dot-pulse {
-  0% {
-    transform: scale(1.2);
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6), 0 0 10px 3px rgba(255, 255, 255, 0.3);
-  }
-
-  60% {
-    transform: scale(1.5);
-    box-shadow: 0 0 0 7px rgba(255, 255, 255, 0), 0 0 16px 5px rgba(255, 255, 255, 0.15);
-  }
-
-  100% {
-    transform: scale(1.2);
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6), 0 0 10px 3px rgba(255, 255, 255, 0.3);
-  }
+  0%   { transform: scale(1.2);
+         box-shadow: 0 0 0 0   color-mix(in srgb, var(--dot-pulse-color) 60%, transparent),
+                               0 0 10px 3px color-mix(in srgb, var(--dot-pulse-color) 30%, transparent); }
+  60%  { transform: scale(1.5);
+         box-shadow: 0 0 0 7px color-mix(in srgb, var(--dot-pulse-color) 0%, transparent),
+                               0 0 16px 5px color-mix(in srgb, var(--dot-pulse-color) 15%, transparent); }
+  100% { transform: scale(1.2);
+         box-shadow: 0 0 0 0   color-mix(in srgb, var(--dot-pulse-color) 60%, transparent),
+                               0 0 10px 3px color-mix(in srgb, var(--dot-pulse-color) 30%, transparent); }
 }
-
-.dot-pulse {
-  animation: dot-pulse 1.6s ease-in-out infinite;
-}
+.dot-pulse { animation: dot-pulse 1.6s ease-in-out infinite; }
 
 /* Hide scrollbar, keep scrolling */
 .timeline-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-
 .timeline-scroll::-webkit-scrollbar {
   display: none;
 }
@@ -74,22 +110,18 @@ body {
 /* Slim themed scrollbar for panels */
 .panel-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #2F3337 transparent;
+  scrollbar-color: var(--color-no-border) transparent;
 }
-
 .panel-scroll::-webkit-scrollbar {
   width: 3px;
 }
-
 .panel-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
-
 .panel-scroll::-webkit-scrollbar-thumb {
-  background: #2F3337;
+  background: var(--color-no-border);
   border-radius: 99px;
 }
-
 .panel-scroll::-webkit-scrollbar-thumb:hover {
-  background: #6C7380;
+  background: var(--color-no-muted);
 }

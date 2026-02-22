@@ -2,6 +2,7 @@
 
 import React from "react";
 import { formatYear, getLabelIntervalFromPx } from "@/utils/yearUtils";
+import { alphaColor } from "@/utils/timelineColors";
 
 interface YearBlockProps {
   year: number;
@@ -24,8 +25,8 @@ function YearBlockInner({ year, pxPerYear, offsetPx, isActive, tickColor }: Year
         opacity: isLabel ? 0.9 : 0.55,
         background: tickColor,
         boxShadow: isLabel
-          ? `0 0 6px 2px ${tickColor}66`
-          : `0 0 4px 1px ${tickColor}44`,
+          ? `0 0 6px 2px ${alphaColor(tickColor, 40)}`
+          : `0 0 4px 1px ${alphaColor(tickColor, 27)}`,
       }
     : { width: 1, height: tickHeight, opacity: isLabel ? 0.7 : 0.35 };
 
@@ -47,7 +48,7 @@ function YearBlockInner({ year, pxPerYear, offsetPx, isActive, tickColor }: Year
           style={{
             fontSize,
             marginTop: 3,
-            color: isActive && tickColor ? `${tickColor}CC` : undefined,
+            color: isActive && tickColor ? alphaColor(tickColor, 80) : undefined,
           }}
         >
           {formatYear(year)}

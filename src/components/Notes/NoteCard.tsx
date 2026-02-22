@@ -6,7 +6,7 @@ import { formatYear } from "@/utils/yearUtils";
 import { useNotesStore } from "@/stores/notesStore";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { MAX_PX_PER_YEAR, YEAR_START } from "@/utils/constants";
-import { getTimelineColor } from "@/utils/timelineColors";
+import { getTimelineColor, alphaColor } from "@/utils/timelineColors";
 
 interface NoteCardProps {
   note: Note;
@@ -30,14 +30,14 @@ export function NoteCard({ note }: NoteCardProps) {
   return (
     <button
       onClick={handleClick}
-      className="w-full text-left px-3 py-3 rounded-xl bg-no-card hover:bg-[#2A2F37] border border-no-border hover:border-[#3A3F47] transition-all group"
+      className="w-full text-left px-3 py-3 rounded-xl bg-no-card hover:bg-no-border border border-no-border transition-all group"
     >
       <div className="flex items-center justify-between gap-1 mb-1.5">
         <span className="text-no-gold/80 text-[12px] font-mono">{formatYear(note.year)}</span>
         {timelineName && (
           <span
             className="text-[9px] uppercase tracking-wide truncate max-w-[80px] font-medium"
-            style={{ color: timelineColor + "B3" }}
+            style={{ color: alphaColor(timelineColor, 70) }}
           >
             {timelineName}
           </span>

@@ -6,7 +6,7 @@ import { Note } from "@/types";
 import { YEAR_START } from "@/utils/constants";
 import { formatYear } from "@/utils/yearUtils";
 import { useNotesStore } from "@/stores/notesStore";
-import { ACTIVE_DOT_COLOR } from "@/utils/timelineColors";
+import { ACTIVE_DOT_COLOR, alphaColor } from "@/utils/timelineColors";
 
 const DOT_SIZE  = 10;
 const DOT_GAP   = 4;
@@ -31,8 +31,8 @@ export function NoteDot({ note, pxPerYear, stackIndex, color }: NoteDotProps) {
 
   const dotColor      = isActive ? ACTIVE_DOT_COLOR : color;
   // 30% opacity glow using the timeline's own color
-  const inactiveGlow  = `0 0 8px 2px ${color}4D`;
-  const inactiveHover = `0 0 12px 3px ${color}73`;
+  const inactiveGlow  = `0 0 8px 2px ${alphaColor(color, 30)}`;
+  const inactiveHover = `0 0 12px 3px ${alphaColor(color, 45)}`;
 
   return (
     <div

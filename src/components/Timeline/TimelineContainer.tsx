@@ -429,14 +429,14 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
                 {startPx > 0 && (
                   <div
                     className="absolute top-0 bottom-0 left-0 pointer-events-none z-[21]"
-                    style={{ width: startPx, background: "rgba(10,12,14,0.62)" }}
+                    style={{ width: startPx, background: "var(--range-overlay)" }}
                   />
                 )}
                 {/* Dim: right of range */}
                 {endPx < totalWidth && (
                   <div
                     className="absolute top-0 bottom-0 pointer-events-none z-[21]"
-                    style={{ left: endPx, right: 0, background: "rgba(10,12,14,0.62)" }}
+                    style={{ left: endPx, right: 0, background: "var(--range-overlay)" }}
                   />
                 )}
                 {/* Range start boundary line */}
@@ -444,8 +444,8 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
                   className="absolute top-0 bottom-0 w-[2px] pointer-events-none z-[22]"
                   style={{
                     left: startPx,
-                    background: "rgba(116,160,255,0.7)",
-                    boxShadow: "2px 0 10px rgba(116,160,255,0.25)",
+                    background: "var(--range-line)",
+                    boxShadow: `2px 0 10px var(--range-glow)`,
                   }}
                 />
                 {/* Range end boundary line */}
@@ -453,8 +453,8 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
                   className="absolute top-0 bottom-0 w-[2px] pointer-events-none z-[22]"
                   style={{
                     left: endPx,
-                    background: "rgba(116,160,255,0.7)",
-                    boxShadow: "-2px 0 10px rgba(116,160,255,0.25)",
+                    background: "var(--range-line)",
+                    boxShadow: `-2px 0 10px var(--range-glow)`,
                   }}
                 />
               </>
@@ -484,8 +484,8 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
         >
           <div className="w-px h-full bg-no-blue/30" />
           <div
-            className="absolute -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-no-blue shadow-[0_0_10px_3px_rgba(116,160,255,0.35)]"
-            style={{ top: mouse.y, left: 0.5 }}
+            className="absolute -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-no-blue"
+            style={{ top: mouse.y, left: 0.5, boxShadow: "0 0 10px 3px var(--range-glow)" }}
           />
           <div
             className="absolute -translate-y-1/2 bg-no-panel/90 px-2 py-0.5 rounded-md text-no-blue text-xs font-mono whitespace-nowrap"

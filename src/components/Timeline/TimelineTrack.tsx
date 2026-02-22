@@ -7,7 +7,7 @@ import { YearBlock } from "./YearBlock";
 import { EventDot } from "./EventDot";
 import { NoteDot } from "./NoteDot";
 import { getTickIntervalFromPx } from "@/utils/yearUtils";
-import { getTimelineColor } from "@/utils/timelineColors";
+import { getTimelineColor, alphaColor } from "@/utils/timelineColors";
 
 interface TimelineTrackProps {
   timeline: Timeline;
@@ -48,13 +48,13 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
     <div
       data-timeline-id={timeline.id}
       className="relative w-full border-b border-no-border flex-1 transition-colors duration-300"
-      style={isActive ? { background: `${color}0A` } : undefined}
+      style={isActive ? { background: alphaColor(color, 4) } : undefined}
     >
       {/* Left accent stripe — glows with timeline color when active */}
       <div
         className="absolute left-0 top-0 bottom-0 w-0.5 transition-all duration-300"
         style={isActive
-          ? { background: `${color}8C`, boxShadow: `2px 0 12px ${color}40` }
+          ? { background: alphaColor(color, 55), boxShadow: `2px 0 12px ${alphaColor(color, 25)}` }
           : { background: "transparent" }
         }
       />
@@ -62,7 +62,7 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
       {/* Track label */}
       <div
         className="sticky top-10 left-3 text-[12px] uppercase tracking-[0.15em] z-10 pointer-events-none select-none inline-block font-semibold transition-colors duration-300"
-        style={{ color: isActive ? `${color}D9` : "rgba(108,115,128,0.65)" }}
+        style={{ color: isActive ? alphaColor(color, 85) : alphaColor("var(--color-no-muted)", 65) }}
       >
         {timeline.title}
       </div>

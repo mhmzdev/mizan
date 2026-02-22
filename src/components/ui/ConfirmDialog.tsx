@@ -29,7 +29,7 @@ export function ConfirmDialog() {
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-[100] bg-[#0F1117]/80 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -46,7 +46,7 @@ export function ConfirmDialog() {
             exit={{   scale: 0.96, opacity: 0, y: "-47%" }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="bg-[#1F2226] border border-[#2F3337] rounded-2xl shadow-[0_32px_64px_rgba(0,0,0,0.7)] overflow-hidden">
+            <div className="bg-no-panel border border-no-border rounded-2xl shadow-[0_32px_64px_rgba(0,0,0,0.4)] overflow-hidden">
               {/* Coloured top strip */}
               <div className={`h-0.5 w-full ${isDanger ? "bg-red-500" : "bg-no-blue"}`} />
 
@@ -58,12 +58,12 @@ export function ConfirmDialog() {
                       <AlertTriangle size={15} className="text-red-400" />
                     </div>
                   )}
-                  <h3 className="text-[#E1E2E5] font-semibold text-base leading-snug pt-1">
+                  <h3 className="text-no-text font-semibold text-base leading-snug pt-1">
                     {options.title}
                   </h3>
                 </div>
 
-                <p className="text-[#6C7380] text-sm leading-relaxed mb-6 ml-11">
+                <p className="text-no-muted text-sm leading-relaxed mb-6 ml-11">
                   {options.message}
                 </p>
 
@@ -71,7 +71,7 @@ export function ConfirmDialog() {
                 <div className="flex gap-2.5 justify-end">
                   <button
                     onClick={() => respond(false)}
-                    className="px-4 py-2 text-sm font-medium text-[#E1E2E5]/60 hover:text-[#E1E2E5] bg-[#252A30] hover:bg-[#2F3337] rounded-xl border border-[#2F3337] transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-no-text/60 hover:text-no-text bg-no-card hover:bg-no-border rounded-xl border border-no-border transition-colors"
                   >
                     {options.cancelLabel ?? "Cancel"}
                   </button>
@@ -80,7 +80,7 @@ export function ConfirmDialog() {
                     className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors ${
                       isDanger
                         ? "bg-red-500 hover:bg-red-400 text-white"
-                        : "bg-no-blue hover:bg-[#5B8FFF] text-[#1A1C1E]"
+                        : "bg-no-blue hover:bg-no-blue-dim text-no-blue-fg"
                     }`}
                   >
                     {options.confirmLabel ?? "Confirm"}

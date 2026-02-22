@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Link2, Check, ChevronLeft, ChevronRight, StickyNote, Layers } from "lucide-react";
+import { Link2, Check, ChevronLeft, ChevronRight, StickyNote, Layers, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { TimelineContainer } from "@/components/Timeline/TimelineContainer";
 import { NotesPanel } from "@/components/Notes/NotesPanel";
@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
 import { useUrlSync } from "@/hooks/useUrlSync";
+import { useTheme } from "@/hooks/useTheme";
 import { MAX_PX_PER_YEAR } from "@/utils/constants";
 import { TimelineEvent } from "@/types";
 
@@ -43,6 +44,7 @@ export default function Home() {
   const dragControls = useDragControls();
 
   useUrlSync();
+  const { theme, toggleTheme } = useTheme();
 
   // Load events chunk
   useEffect(() => {
@@ -197,13 +199,22 @@ export default function Home() {
         <h1 className="text-no-text/70 text-[13px] font-mono tracking-[0.25em] uppercase">
           Mizan — The Balance of Time & Thought
         </h1>
-        <button
-          onClick={handleCopyViewLink}
-          title="Copy view link"
-          className="ml-auto w-8 h-8 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
-        >
-          {viewCopied ? <Check size={13} className="text-green-400" /> : <Link2 size={13} />}
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
+          >
+            {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
+          </button>
+          <button
+            onClick={handleCopyViewLink}
+            title="Copy view link"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
+          >
+            {viewCopied ? <Check size={13} className="text-green-400" /> : <Link2 size={13} />}
+          </button>
+        </div>
       </header>
 
       {/* ── Main content ───────────────────────────────────────────────────── */}
