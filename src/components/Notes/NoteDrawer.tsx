@@ -156,7 +156,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
       </div>
 
       {/* Form */}
-      <div className="flex-1 flex flex-col gap-3.5 p-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col gap-3.5 p-4 overflow-y-auto panel-scroll">
         <div className="flex flex-col">
           <label className={labelClass}>Timeline</label>
           <select

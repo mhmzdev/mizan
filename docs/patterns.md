@@ -109,6 +109,25 @@ const { viewportWidth, pxPerYear } = useTimelineStore.getState();
 
 ---
 
+## Theme-Aware Colors
+
+**Never concatenate hex alpha** (`${color}B3`, `${color}4D`). Use `alphaColor()` instead:
+
+```ts
+import { alphaColor } from "@/utils/timelineColors";
+// 70% opacity of any color, including CSS variable references:
+alphaColor(timelineColor, 70)   // → "color-mix(in srgb, var(--t-color-1) 70%, transparent)"
+```
+
+Common opacity equivalents:
+- `0A` = 4% | `40` = 25% | `4D` = 30% | `66` = 40% | `73` = 45% | `8C` = 55% | `B3` = 70% | `CC` = 80% | `D9` = 85%
+
+**Timeline palette colors** are CSS variables — `getTimelineColor(index)` returns `"var(--t-color-N)"`. Never hardcode a timeline hex color in a component.
+
+**Active dot** and **dot-pulse glow** use `var(--active-dot-color)` and `var(--dot-pulse-color)` — these flip from white to charcoal between dark/light themes via CSS.
+
+---
+
 ## Confirm Dialogs (Destructive Actions)
 
 Use the imperative `dialogStore` API — never use `window.confirm`:

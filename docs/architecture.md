@@ -37,6 +37,7 @@ src/
 
   hooks/
     useUrlSync.ts              # URL ↔ store sync; debounced writes + localStorage persistence
+    useTheme.ts                # useTheme() hook — toggles data-theme on <html>, persists to mizan_theme
 
   lib/
     db.ts                      # Dexie schema (tables: notes, timelines)
@@ -119,6 +120,7 @@ page.tsx
 | `mizan_notes_width` | Panel width in px (number) |
 | `mizan_sidebar_width` | Panel width in px (number) |
 | `mizan_last_timeline_id` | Last selected timeline id (number) |
+| `mizan_theme` | `"dark"` or `"light"` (string) |
 
 ### URL params
 | Param | Meaning |
@@ -149,6 +151,16 @@ Tailwind v4 `@theme` in `globals.css` exposes `no-*` color tokens:
 | `no-gold` | `#FFD700` | Gold accent (note year labels) |
 
 Base font-size is `18px` on `html`. All `rem`-based Tailwind sizes scale from this.
+
+### Theme Switching
+
+`src/hooks/useTheme.ts` — `useTheme()` hook returns `{ theme, toggleTheme }`. Sets `data-theme` attribute on `<html>`. The anti-flash inline script in `layout.tsx` reads `mizan_theme` before first paint.
+
+**Per-timeline palette** lives as CSS variables `--t-color-0` through `--t-color-4` in `:root` (dark defaults) and `html[data-theme="light"]` (light overrides). Components never reference hex values directly — they use `getTimelineColor(index)` which returns `"var(--t-color-N)"`.
+
+**`alphaColor(color, percent)`** in `src/utils/timelineColors.ts` — use this instead of hex alpha concatenation (e.g. `${color}B3`). Uses `color-mix()` so it works with CSS variable color references.
+
+**Active dot** uses `var(--active-dot-color)` — white on dark, deep charcoal on light. The `dot-pulse` animation glow uses `var(--dot-pulse-color)` via `color-mix()` in the keyframe.
 
 ---
 

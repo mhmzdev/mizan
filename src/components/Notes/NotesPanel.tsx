@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Search, StickyNote, X } from "lucide-react";
 import { useNotesStore } from "@/stores/notesStore";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { formatYear } from "@/utils/yearUtils";
+import { getTimelineColor, alphaColor } from "@/utils/timelineColors";
 import { NoteCard } from "./NoteCard";
 
 export function NotesPanel() {
   const notes      = useNotesStore((s) => s.notes);
+  const timelines  = useNotesStore((s) => s.timelines);
   const openDrawer = useNotesStore((s) => s.openDrawer);
   const centerYear = useTimelineStore((s) => s.centerYear);
   const rangeStart = useTimelineStore((s) => s.rangeStart);
@@ -16,12 +18,24 @@ export function NotesPanel() {
   const clearRange = useTimelineStore((s) => s.clearRange);
   const rangeActive = rangeStart !== null && rangeEnd !== null;
 
-  const [search, setSearch] = useState("");
+  const [search,             setSearch]             = useState("");
+  const [selectedTimelineId, setSelectedTimelineId] = useState<number | null>(null);
+
+  // Clear timeline filter if that timeline is deleted
+  useEffect(() => {
+    if (selectedTimelineId !== null && !timelines.some((t) => t.id === selectedTimelineId)) {
+      setSelectedTimelineId(null);
+    }
+  }, [timelines, selectedTimelineId]);
 
   const query = search.trim().toLowerCase();
   const filtered = notes
+    .filter((n) => selectedTimelineId === null || n.timelineId === selectedTimelineId)
     .filter((n) => !rangeActive || (n.year >= rangeStart! && n.year <= rangeEnd!))
     .filter((n) => !query || n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query));
+
+  const showTabs = notes.length > 0 && timelines.length > 1;
+  const isFiltered = query || rangeActive || selectedTimelineId !== null;
 
   return (
     <aside className="w-full h-full bg-no-panel border-r border-no-border flex flex-col">
@@ -38,6 +52,52 @@ export function NotesPanel() {
           <Plus size={14} />
         </button>
       </div>
+
+      {/* Timeline filter tabs */}
+      {showTabs && (
+        <div className="flex gap-1 px-2 py-2 border-b border-no-border shrink-0 overflow-x-auto scrollbar-none">
+          {/* All tab */}
+          <button
+            onClick={() => setSelectedTimelineId(null)}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-colors shrink-0 ${
+              selectedTimelineId === null
+                ? "bg-no-card border border-no-border text-no-text"
+                : "text-no-muted hover:text-no-text hover:bg-no-card/50"
+            }`}
+          >
+            All
+          </button>
+
+          {timelines.map((tl, i) => {
+            const color   = getTimelineColor(i);
+            const isSelected = selectedTimelineId === tl.id;
+            return (
+              <button
+                key={tl.id}
+                onClick={() => setSelectedTimelineId(isSelected ? null : tl.id!)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all shrink-0 border"
+                style={{
+                  color:           isSelected ? color : undefined,
+                  borderColor:     isSelected ? alphaColor(color, 35) : "transparent",
+                  backgroundColor: isSelected ? alphaColor(color, 8) : "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) (e.currentTarget as HTMLButtonElement).style.color = color;
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) (e.currentTarget as HTMLButtonElement).style.color = "";
+                }}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: color }}
+                />
+                {tl.title}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Range filter badge */}
       {rangeActive && (
@@ -104,7 +164,7 @@ export function NotesPanel() {
             {filtered.map((note) => (
               <NoteCard key={note.id} note={note} />
             ))}
-            {(query || rangeActive) && (
+            {isFiltered && (
               <p className="text-no-muted/35 text-[12px] text-center py-1">
                 {filtered.length} of {notes.length} notes
               </p>

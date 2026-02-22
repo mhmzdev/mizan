@@ -30,8 +30,9 @@ export function NoteCard({ note }: NoteCardProps) {
   return (
     <button
       onClick={handleClick}
-      className="w-full text-left px-3 py-3 rounded-xl bg-no-card hover:bg-no-border border border-no-border transition-all group"
+      className="relative w-full text-left px-3 py-3 rounded-xl bg-no-card hover:bg-no-border border border-no-border transition-all group overflow-hidden"
     >
+      <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: timelineColor }} />
       <div className="flex items-center justify-between gap-1 mb-1.5">
         <span className="text-no-gold/80 text-[12px] font-mono">{formatYear(note.year)}</span>
         {timelineName && (

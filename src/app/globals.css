@@ -98,6 +98,26 @@ body {
 }
 .dot-pulse { animation: dot-pulse 1.6s ease-in-out infinite; }
 
+/* Global themed scrollbar — all overflow areas adapt to dark/light theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-no-border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-no-border);
+  border-radius: 99px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-no-muted);
+}
+
 /* Hide scrollbar, keep scrolling */
 .timeline-scroll {
   scrollbar-width: none;
