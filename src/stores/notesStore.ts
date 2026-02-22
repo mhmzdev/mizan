@@ -1,6 +1,6 @@
-import { create } from "zustand";
-import { Note, Timeline } from "@/types";
-import { db } from "@/lib/db";
+import {create} from "zustand";
+import {Note, Timeline} from "@/types";
+import {db} from "@/lib/db";
 
 const LAST_TIMELINE_KEY = "mizan_last_timeline_id";
 
@@ -26,14 +26,15 @@ interface NotesState {
   loadNotes: () => Promise<void>;
   loadTimelines: () => Promise<void>;
   addTimeline: (title: string) => Promise<void>;
+  renameTimeline: (id: number, title: string) => Promise<void>;
   deleteTimeline: (id: number) => Promise<void>;
   setLastTimelineId: (id: number) => void;
   setDrawerTimelineId: (id: number | null) => void;
 
   openDrawer: (year: number, noteId?: number) => void;
   closeDrawer: () => void;
-  saveNote: (data: { timelineId: number; year: number; title: string; content: string }) => Promise<void>;
-  updateNote: (id: number, changes: { timelineId?: number; title?: string; content?: string; year?: number }) => Promise<void>;
+  saveNote: (data: {timelineId: number; year: number; title: string; content: string}) => Promise<void>;
+  updateNote: (id: number, changes: {timelineId?: number; title?: string; content?: string; year?: number}) => Promise<void>;
   deleteNote: (id: number) => Promise<void>;
 }
 
@@ -48,20 +49,26 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   loadNotes: async () => {
     const notes = await db.notes.orderBy("year").toArray();
-    set({ notes });
+    set({notes});
   },
 
   loadTimelines: async () => {
     const timelines = await db.timelines.toArray().then((ts) => ts.sort((a, b) => a.createdAt - b.createdAt));
-    set({ timelines });
+    set({timelines});
   },
 
   addTimeline: async (title) => {
     const existing = await db.timelines.count();
     if (existing >= 5) return;
-    await db.timelines.add({ title: title.trim(), isDefault: false, createdAt: Date.now() });
+    await db.timelines.add({title: title.trim(), isDefault: false, createdAt: Date.now()});
     const timelines = await db.timelines.toArray().then((ts) => ts.sort((a, b) => a.createdAt - b.createdAt));
-    set({ timelines });
+    set({timelines});
+  },
+
+  renameTimeline: async (id, title) => {
+    await db.timelines.update(id, {title: title.trim()});
+    const timelines = await db.timelines.toArray().then((ts) => ts.sort((a, b) => a.createdAt - b.createdAt));
+    set({timelines});
   },
 
   deleteTimeline: async (id) => {
@@ -77,43 +84,43 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const stillExists = timelines.some((t) => t.id === lastId);
     if (!stillExists) {
       writeLastTimelineId(1);
-      set({ timelines, notes, lastTimelineId: 1 });
+      set({timelines, notes, lastTimelineId: 1});
     } else {
-      set({ timelines, notes });
+      set({timelines, notes});
     }
   },
 
   setLastTimelineId: (id) => {
     writeLastTimelineId(id);
-    set({ lastTimelineId: id });
+    set({lastTimelineId: id});
   },
 
-  setDrawerTimelineId: (id) => set({ drawerTimelineId: id }),
+  setDrawerTimelineId: (id) => set({drawerTimelineId: id}),
 
   openDrawer: (year, noteId) => {
-    set({ drawerOpen: true, selectedYear: year, editingNoteId: noteId ?? null });
+    set({drawerOpen: true, selectedYear: year, editingNoteId: noteId ?? null});
   },
 
   closeDrawer: () => {
-    set({ drawerOpen: false, editingNoteId: null, drawerTimelineId: null });
+    set({drawerOpen: false, editingNoteId: null, drawerTimelineId: null});
   },
 
   saveNote: async (data) => {
     const now = Date.now();
-    await db.notes.add({ ...data, createdAt: now, updatedAt: now });
+    await db.notes.add({...data, createdAt: now, updatedAt: now});
     const notes = await db.notes.orderBy("year").toArray();
-    set({ notes });
+    set({notes});
   },
 
   updateNote: async (id, changes) => {
-    await db.notes.update(id, { ...changes, updatedAt: Date.now() });
+    await db.notes.update(id, {...changes, updatedAt: Date.now()});
     const notes = await db.notes.orderBy("year").toArray();
-    set({ notes });
+    set({notes});
   },
 
   deleteNote: async (id) => {
     await db.notes.delete(id);
     const notes = await db.notes.orderBy("year").toArray();
-    set({ notes });
+    set({notes});
   },
 }));

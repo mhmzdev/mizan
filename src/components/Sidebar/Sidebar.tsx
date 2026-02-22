@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
-import { Plus, X } from "lucide-react";
+import React, { useState, useCallback, useRef } from "react";
+import { Plus, X, Pencil, Check } from "lucide-react";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
 import { useDialogStore } from "@/stores/dialogStore";
@@ -15,11 +15,15 @@ export function Sidebar() {
 
   const timelines      = useNotesStore((s) => s.timelines);
   const addTimeline    = useNotesStore((s) => s.addTimeline);
+  const renameTimeline = useNotesStore((s) => s.renameTimeline);
   const deleteTimeline = useNotesStore((s) => s.deleteTimeline);
 
-  const [jumpInput,   setJumpInput]   = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newTitle,    setNewTitle]    = useState("");
+  const [jumpInput,          setJumpInput]          = useState("");
+  const [showAddForm,        setShowAddForm]        = useState(false);
+  const [newTitle,           setNewTitle]           = useState("");
+  const [editingTimelineId,  setEditingTimelineId]  = useState<number | null>(null);
+  const [editTitle,          setEditTitle]          = useState("");
+  const cancelEditRef = useRef(false);
 
   const handleJump = useCallback(
     (e: React.FormEvent) => {
@@ -75,6 +79,25 @@ export function Sidebar() {
     });
     if (ok) deleteTimeline(id);
   }, [deleteTimeline]);
+
+  const startEdit = useCallback((id: number, title: string) => {
+    cancelEditRef.current = false;
+    setEditingTimelineId(id);
+    setEditTitle(title);
+  }, []);
+
+  const commitEdit = useCallback(() => {
+    if (cancelEditRef.current) return;
+    if (editingTimelineId !== null && editTitle.trim()) {
+      renameTimeline(editingTimelineId, editTitle.trim());
+    }
+    setEditingTimelineId(null);
+  }, [editingTimelineId, editTitle, renameTimeline]);
+
+  const cancelEdit = useCallback(() => {
+    cancelEditRef.current = true;
+    setEditingTimelineId(null);
+  }, []);
 
   const canAdd = timelines.length < MAX_TIMELINES;
 
@@ -135,19 +158,51 @@ export function Sidebar() {
 
         <div className="flex flex-col gap-1">
           {timelines.map((tl) => (
-            <div
-              key={tl.id}
-              className="flex items-center justify-between gap-1 px-2.5 py-2 rounded-lg bg-no-card border border-no-border group"
-            >
-              <span className="text-no-text/70 text-xs truncate leading-snug">{tl.title}</span>
-              {!tl.isDefault && (
-                <button
-                  onClick={() => handleDeleteTimeline(tl.id!, tl.title)}
-                  className="shrink-0 w-5 h-5 flex items-center justify-center rounded text-no-muted/40 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all"
-                  title="Remove timeline"
-                >
-                  <X size={11} />
-                </button>
+            <div key={tl.id}>
+              {editingTimelineId === tl.id ? (
+                /* ── Inline rename row ── */
+                <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-no-card border border-no-blue/50">
+                  <input
+                    autoFocus
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter")  { e.preventDefault(); commitEdit(); }
+                      if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+                    }}
+                    onBlur={commitEdit}
+                    maxLength={40}
+                    className="flex-1 min-w-0 bg-transparent text-no-text text-xs outline-none"
+                  />
+                  <button
+                    onMouseDown={(e) => e.preventDefault()} // prevent blur before click
+                    onClick={commitEdit}
+                    className="shrink-0 w-5 h-5 flex items-center justify-center rounded text-no-blue hover:bg-no-blue/10 transition-colors"
+                  >
+                    <Check size={11} />
+                  </button>
+                </div>
+              ) : (
+                /* ── Normal display row ── */
+                <div className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-no-card border border-no-border group">
+                  <span className="text-no-text/70 text-xs truncate leading-snug flex-1">{tl.title}</span>
+                  <button
+                    onClick={() => startEdit(tl.id!, tl.title)}
+                    className="shrink-0 w-5 h-5 flex items-center justify-center rounded text-no-muted/40 hover:text-no-blue hover:bg-no-blue/10 opacity-0 group-hover:opacity-100 transition-all"
+                    title="Rename timeline"
+                  >
+                    <Pencil size={10} />
+                  </button>
+                  {!tl.isDefault && (
+                    <button
+                      onClick={() => handleDeleteTimeline(tl.id!, tl.title)}
+                      className="shrink-0 w-5 h-5 flex items-center justify-center rounded text-no-muted/40 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Remove timeline"
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ))}

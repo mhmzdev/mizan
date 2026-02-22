@@ -88,7 +88,7 @@ export default function Home() {
       {/* Header */}
       <header className="h-12 border-b border-no-border flex items-center px-5 shrink-0 bg-no-panel z-50 relative">
         <h1 className="text-no-text/70 text-[11px] font-mono tracking-[0.25em] uppercase">
-          Mizan — Infinite Timeline
+          Mizan — The Balance of Time & Thought
         </h1>
 
         {/* Copy current view link */}

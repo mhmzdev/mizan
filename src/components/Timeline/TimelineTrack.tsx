@@ -44,6 +44,7 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
 
   return (
     <div
+      data-timeline-id={timeline.id}
       className="relative w-full border-b border-no-border flex-1 transition-colors duration-300"
       style={isActive ? { background: "rgba(116,160,255,0.04)" } : undefined}
     >

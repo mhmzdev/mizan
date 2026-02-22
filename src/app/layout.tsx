@@ -16,7 +16,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Mizan — Infinite Timeline",
+  title: "Mizan — The Balance of Time & Thought",
   description: "A high-performance historical timeline from 4001 BC to 2026 AD",
 };
 

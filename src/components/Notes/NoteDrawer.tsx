@@ -98,11 +98,13 @@ export function NoteDrawer() {
 
   const handleCopyNoteLink = useCallback(() => {
     if (editingNoteId === null) return;
-    navigator.clipboard.writeText(buildNoteUrl(editingNoteId)).then(() => {
+    const note = notes.find((n) => n.id === editingNoteId);
+    if (!note) return;
+    navigator.clipboard.writeText(buildNoteUrl(editingNoteId, note.year)).then(() => {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     });
-  }, [editingNoteId]);
+  }, [editingNoteId, notes]);
 
   const handleDelete = useCallback(async () => {
     if (editingNoteId === null) return;

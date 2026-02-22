@@ -339,16 +339,10 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
   }, []);
 
   /**
-   * Click-to-zoom: zoom to years level centered on the clicked year.
-   * Blocked during animation, zoom loop, or when already at max zoom.
-   * A 5 px drag-guard prevents false fires from slight mouse movement.
+   * Click to open the note drawer pre-filled with the clicked year.
+   * A 5 px drag-guard prevents false fires from scroll/drag gestures.
    */
   const handleTimelineClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (isAnimatingRef.current || zoomRafRef.current !== null) return;
-
-    const state = useTimelineStore.getState();
-    if (state.pxPerYear >= MAX_PX_PER_YEAR) return;
-
     // Ignore if the pointer moved more than 5 px — it was a scroll/drag gesture
     if (mouseDownPosRef.current) {
       const dx = e.clientX - mouseDownPosRef.current.x;
@@ -356,14 +350,26 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
       if (dx * dx + dy * dy > 25) return;
     }
 
+    const state = useTimelineStore.getState();
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickedYear = Math.floor((state.scrollLeft + clickX) / state.pxPerYear) + YEAR_START;
     const clampedYear = Math.max(YEAR_START, Math.min(YEAR_END, clickedYear));
 
-    // Update center to clicked year, then animate to max zoom
-    useTimelineStore.setState({ centerYear: clampedYear });
-    state.setTargetPxPerYear(MAX_PX_PER_YEAR);
+    // Walk up from the click target to find which timeline track was clicked
+    let el = e.target as HTMLElement | null;
+    let clickedTimelineId: number | null = null;
+    while (el && el !== e.currentTarget) {
+      if (el.dataset.timelineId) {
+        clickedTimelineId = parseInt(el.dataset.timelineId, 10);
+        break;
+      }
+      el = el.parentElement;
+    }
+
+    const notesStore = useNotesStore.getState();
+    if (clickedTimelineId !== null) notesStore.setLastTimelineId(clickedTimelineId);
+    notesStore.openDrawer(clampedYear);
   }, []);
 
   const labelOffsetX =

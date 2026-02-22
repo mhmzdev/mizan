@@ -39,12 +39,12 @@ function parseUrlParams(): {
 }
 
 /**
- * Returns a shareable URL for a specific note.
- * e.g. https://your-domain.com/?note=7
+ * Returns a shareable URL for a specific note, including its year for context.
+ * e.g. https://your-domain.com/?year=-44&note=7
  */
-export function buildNoteUrl(noteId: number): string {
+export function buildNoteUrl(noteId: number, year: number): string {
   if (typeof window === "undefined") return "";
-  return `${window.location.origin}${window.location.pathname}?note=${noteId}`;
+  return `${window.location.origin}${window.location.pathname}?year=${year}&note=${noteId}`;
 }
 
 /**
@@ -98,10 +98,12 @@ export function useUrlSync() {
       const timeline = useTimelineStore.getState();
 
       if (notes.drawerOpen && notes.editingNoteId !== null) {
-        // A saved note is open — expose its id so the URL is shareable.
+        // A saved note is open — include its year so the URL is human-readable.
+        const note = notes.notes.find((n) => n.id === notes.editingNoteId);
+        const yearPart = note ? `year=${note.year}&` : "";
         window.history.replaceState(
           null, "",
-          `${window.location.pathname}?note=${notes.editingNoteId}`,
+          `${window.location.pathname}?${yearPart}note=${notes.editingNoteId}`,
         );
       } else {
         // No note open — reflect the current viewport position.
