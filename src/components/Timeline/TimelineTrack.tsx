@@ -7,37 +7,29 @@ import { YearBlock } from "./YearBlock";
 import { EventDot } from "./EventDot";
 import { NoteDot } from "./NoteDot";
 import { getTickIntervalFromPx } from "@/utils/yearUtils";
+import { getTimelineColor } from "@/utils/timelineColors";
 
 interface TimelineTrackProps {
   timeline: Timeline;
+  timelineIndex: number;
   mode: ZoomMode;
   pxPerYear: number;
   visibleRange: VisibleRange;
   events: Map<number, TimelineEvent[]>;
   notes: Note[];
+  isActive?: boolean;
 }
 
-function TimelineTrackInner({
-  timeline,
-  mode,
-  pxPerYear,
-  visibleRange,
-  events,
-  notes,
-}: TimelineTrackProps) {
+function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleRange, events, notes, isActive }: TimelineTrackProps) {
   const tickInterval = getTickIntervalFromPx(pxPerYear);
-
-  // Build array of years to render — only at tick intervals
-  const years: number[] = [];
   const { startYear, endYear } = visibleRange;
 
+  const years: number[] = [];
   const alignedStart = Math.floor(startYear / tickInterval) * tickInterval;
   for (let y = alignedStart; y <= endYear; y += tickInterval) {
     if (y >= startYear) years.push(y);
   }
 
-  // Collect visible events — only in years mode, and only if this timeline is
-  // tied to an event track (i.e. one of the two default timelines)
   const visibleEvents: TimelineEvent[] = [];
   if (mode === "years" && timeline.eventTrack) {
     for (let y = startYear; y <= endYear; y++) {
@@ -51,13 +43,27 @@ function TimelineTrackInner({
   }
 
   return (
-    <div className="relative w-full border-b border-white/15 flex-1">
+    <div
+      className="relative w-full border-b border-no-border flex-1 transition-colors duration-300"
+      style={isActive ? { background: "rgba(116,160,255,0.04)" } : undefined}
+    >
+      {/* Left accent stripe — glows when track is active */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-0.5 transition-all duration-300"
+        style={isActive
+          ? { background: "rgba(116,160,255,0.55)", boxShadow: "2px 0 12px rgba(116,160,255,0.25)" }
+          : { background: "transparent" }
+        }
+      />
+
       {/* Track label */}
-      <div className="sticky top-10 left-2 text-white/50 text-xs uppercase tracking-widest z-10 pointer-events-none select-none inline-block font-medium">
+      <div
+        className="sticky top-10 left-3 text-[10px] uppercase tracking-[0.15em] z-10 pointer-events-none select-none inline-block font-semibold transition-colors duration-300"
+        style={{ color: isActive ? "rgba(116,160,255,0.85)" : "rgba(108,115,128,0.65)" }}
+      >
         {timeline.title}
       </div>
 
-      {/* Year ticks and labels */}
       {years.map((year) => (
         <YearBlock
           key={year}
@@ -67,20 +73,17 @@ function TimelineTrackInner({
         />
       ))}
 
-      {/* Event dots (seed data) */}
       {visibleEvents.map((ev) => (
         <EventDot key={ev.id} event={ev} mode={mode} />
       ))}
 
-      {/* Note dots — stacked vertically per year */}
       {(() => {
         const yearCount = new Map<number, number>();
+        const dotColor  = getTimelineColor(timelineIndex);
         return notes.map((note) => {
           const idx = yearCount.get(note.year) ?? 0;
           yearCount.set(note.year, idx + 1);
-          return (
-            <NoteDot key={note.id} note={note} pxPerYear={pxPerYear} stackIndex={idx} />
-          );
+          return <NoteDot key={note.id} note={note} pxPerYear={pxPerYear} stackIndex={idx} color={dotColor} />;
         });
       })()}
     </div>

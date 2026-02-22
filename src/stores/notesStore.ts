@@ -20,12 +20,15 @@ interface NotesState {
   editingNoteId: number | null;
   selectedYear: number;
   lastTimelineId: number;
+  /** The timeline currently selected inside the open drawer — used to highlight the track. */
+  drawerTimelineId: number | null;
 
   loadNotes: () => Promise<void>;
   loadTimelines: () => Promise<void>;
   addTimeline: (title: string) => Promise<void>;
   deleteTimeline: (id: number) => Promise<void>;
   setLastTimelineId: (id: number) => void;
+  setDrawerTimelineId: (id: number | null) => void;
 
   openDrawer: (year: number, noteId?: number) => void;
   closeDrawer: () => void;
@@ -41,6 +44,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   editingNoteId: null,
   selectedYear: 0,
   lastTimelineId: readLastTimelineId(),
+  drawerTimelineId: null,
 
   loadNotes: async () => {
     const notes = await db.notes.orderBy("year").toArray();
@@ -84,12 +88,14 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set({ lastTimelineId: id });
   },
 
+  setDrawerTimelineId: (id) => set({ drawerTimelineId: id }),
+
   openDrawer: (year, noteId) => {
     set({ drawerOpen: true, selectedYear: year, editingNoteId: noteId ?? null });
   },
 
   closeDrawer: () => {
-    set({ drawerOpen: false, editingNoteId: null });
+    set({ drawerOpen: false, editingNoteId: null, drawerTimelineId: null });
   },
 
   saveNote: async (data) => {

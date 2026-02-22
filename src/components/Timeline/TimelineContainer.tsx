@@ -56,6 +56,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
   const targetPxPerYear = useTimelineStore((s) => s.targetPxPerYear);
   const scrollLeft      = useTimelineStore((s) => s.scrollLeft);
   const viewportWidth   = useTimelineStore((s) => s.viewportWidth);
+  const pendingNav      = useTimelineStore((s) => s.pendingNav);
   const setScrollLeft   = useTimelineStore((s) => s.setScrollLeft);
   const setViewportWidth = useTimelineStore((s) => s.setViewportWidth);
 
@@ -73,8 +74,10 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
   }, [mouse, scrollLeft, pxPerYear]);
 
   // Timelines + notes from store
-  const timelines = useNotesStore((s) => s.timelines);
-  const allNotes  = useNotesStore((s) => s.notes);
+  const timelines          = useNotesStore((s) => s.timelines);
+  const allNotes           = useNotesStore((s) => s.notes);
+  const drawerOpen         = useNotesStore((s) => s.drawerOpen);
+  const drawerTimelineId   = useNotesStore((s) => s.drawerTimelineId);
 
   // Per-timeline visible notes map: timelineId → Note[]
   const visibleNotesByTimeline = useMemo(() => {
@@ -122,6 +125,41 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     setViewportWidth(containerRef.current.clientWidth);
     return () => observer.disconnect();
   }, [setViewportWidth]);
+
+  // Instant navigation from URL deep-link (pendingNav set by useUrlSync / page.tsx)
+  useEffect(() => {
+    if (!pendingNav || viewportWidth <= 0 || !containerRef.current) return;
+
+    const { year, zoom } = pendingNav;
+    const newScroll = Math.max(0, (year - YEAR_START) * zoom - viewportWidth / 2);
+
+    // Cancel any in-flight sidebar animation or wheel-zoom loop
+    if (animFrameRef.current !== null) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current   = null;
+      isAnimatingRef.current = false;
+    }
+    if (zoomRafRef.current !== null) {
+      cancelAnimationFrame(zoomRafRef.current);
+      zoomRafRef.current = null;
+    }
+
+    // Sync zoom refs so the next wheel gesture continues from here
+    currentLogPxRef.current = Math.log(zoom);
+    targetLogPxRef.current  = Math.log(zoom);
+
+    // Apply to DOM and store in one shot
+    isSettingScroll.current = true;
+    containerRef.current.scrollLeft = newScroll;
+    requestAnimationFrame(() => { isSettingScroll.current = false; });
+
+    useTimelineStore.setState({
+      pxPerYear:  zoom,
+      scrollLeft: newScroll,
+      centerYear: year,
+      pendingNav: null,
+    });
+  }, [pendingNav, viewportWidth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sidebar button animation (400 ms ease-out-expo)
   useEffect(() => {
@@ -348,15 +386,17 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
         onScroll={handleScroll}
       >
         <div className="flex flex-col" style={{ width: totalWidth, minHeight: "100%" }}>
-          {timelines.map((timeline) => (
+          {timelines.map((timeline, idx) => (
             <TimelineTrack
               key={timeline.id}
               timeline={timeline}
+              timelineIndex={idx}
               mode={mode}
               pxPerYear={pxPerYear}
               visibleRange={visibleRange}
               events={eventsByYear}
               notes={visibleNotesByTimeline.get(timeline.id!) ?? []}
+              isActive={drawerOpen && timeline.id === drawerTimelineId}
             />
           ))}
         </div>
@@ -364,17 +404,17 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
 
       {mouse !== null && hoveredYear !== null && (
         <div
-          className="absolute top-0 bottom-0 pointer-events-none"
+          className="absolute top-0 bottom-0 pointer-events-none z-50"
           style={{ left: mouse.x }}
         >
-          <div className="w-px h-full bg-white/35" />
+          <div className="w-px h-full bg-no-blue/30" />
           <div
-            className="absolute -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-[0_0_8px_2px_rgba(255,255,255,0.25)]"
+            className="absolute -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-no-blue shadow-[0_0_10px_3px_rgba(116,160,255,0.35)]"
             style={{ top: mouse.y, left: 0.5 }}
           />
           <div
-            className="absolute top-3 bg-black/80 border border-white/20 px-2 py-0.5 rounded text-white text-xs font-mono whitespace-nowrap"
-            style={{ left: labelOffsetX }}
+            className="absolute -translate-y-1/2 bg-no-panel/90 px-2 py-0.5 rounded-md text-no-blue text-xs font-mono whitespace-nowrap"
+            style={{ top: mouse.y, left: labelOffsetX }}
           >
             {formatYear(hoveredYear)}
           </div>

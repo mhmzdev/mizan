@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { X } from "lucide-react";
+import { X, Link, Check } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNotesStore } from "@/stores/notesStore";
+import { useDialogStore } from "@/stores/dialogStore";
 import { formatYear } from "@/utils/yearUtils";
+import { buildNoteUrl } from "@/hooks/useUrlSync";
 
 function parseYearInput(raw: string): number | null {
   const trimmed = raw.trim().toUpperCase();
@@ -26,6 +29,11 @@ function parseYearInput(raw: string): number | null {
   return Math.max(-4000, Math.min(2025, year));
 }
 
+const inputClass =
+  "w-full bg-[#1A1C1E]/60 border border-no-border/70 rounded-lg px-3 py-2 text-no-text text-sm placeholder:text-no-muted/50 focus:outline-none focus:border-no-blue/50 transition-colors";
+
+const labelClass = "text-no-muted text-[10px] uppercase tracking-[0.12em] font-medium mb-1";
+
 export function NoteDrawer() {
   const drawerOpen        = useNotesStore((s) => s.drawerOpen);
   const editingNoteId     = useNotesStore((s) => s.editingNoteId);
@@ -37,23 +45,26 @@ export function NoteDrawer() {
   const saveNote          = useNotesStore((s) => s.saveNote);
   const updateNote        = useNotesStore((s) => s.updateNote);
   const deleteNote        = useNotesStore((s) => s.deleteNote);
-  const setLastTimelineId = useNotesStore((s) => s.setLastTimelineId);
+  const setLastTimelineId    = useNotesStore((s) => s.setLastTimelineId);
+  const setDrawerTimelineId  = useNotesStore((s) => s.setDrawerTimelineId);
 
-  const [yearInput,   setYearInput]   = useState("");
-  const [yearError,   setYearError]   = useState(false);
-  const [title,       setTitle]       = useState("");
-  const [content,     setContent]     = useState("");
-  const [timelineId,  setTimelineId]  = useState<number>(lastTimelineId);
+  const [yearInput,   setYearInput]  = useState("");
+  const [yearError,   setYearError]  = useState(false);
+  const [title,       setTitle]      = useState("");
+  const [content,     setContent]    = useState("");
+  const [timelineId,  setTimelineId] = useState<number>(lastTimelineId);
+  const [linkCopied,  setLinkCopied] = useState(false);
 
-  // Populate form on open
   useEffect(() => {
     if (!drawerOpen) return;
+    let resolvedTimelineId = lastTimelineId;
     if (editingNoteId !== null) {
       const note = notes.find((n) => n.id === editingNoteId);
       if (note) {
         setYearInput(formatYear(note.year));
         setTitle(note.title);
         setContent(note.content);
+        resolvedTimelineId = note.timelineId;
         setTimelineId(note.timelineId);
       }
     } else {
@@ -63,16 +74,17 @@ export function NoteDrawer() {
       setTimelineId(lastTimelineId);
     }
     setYearError(false);
+    setDrawerTimelineId(resolvedTimelineId);
   }, [drawerOpen, editingNoteId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTimelineChange = useCallback((id: number) => {
     setTimelineId(id);
     setLastTimelineId(id);
-  }, [setLastTimelineId]);
+    setDrawerTimelineId(id);
+  }, [setLastTimelineId, setDrawerTimelineId]);
 
   const handleSave = useCallback(async () => {
     if (!title.trim()) return;
-
     const parsedYear = parseYearInput(yearInput);
     if (parsedYear === null) { setYearError(true); return; }
 
@@ -84,106 +96,144 @@ export function NoteDrawer() {
     closeDrawer();
   }, [yearInput, title, content, timelineId, editingNoteId, saveNote, updateNote, closeDrawer]);
 
+  const handleCopyNoteLink = useCallback(() => {
+    if (editingNoteId === null) return;
+    navigator.clipboard.writeText(buildNoteUrl(editingNoteId)).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  }, [editingNoteId]);
+
   const handleDelete = useCallback(async () => {
     if (editingNoteId === null) return;
-    if (!window.confirm("Delete this note? This cannot be undone.")) return;
+    const ok = await useDialogStore.getState().confirm({
+      title: "Delete note?",
+      message: "This note will be permanently deleted. This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
     await deleteNote(editingNoteId);
     closeDrawer();
   }, [editingNoteId, deleteNote, closeDrawer]);
 
-  if (!drawerOpen) return null;
-
   return (
-    <div
-      className="absolute top-0 bottom-0 left-52 w-80 bg-zinc-900 border-r border-white/15 flex flex-col z-40 shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-white/15 shrink-0">
-        <span className="text-white/50 text-[11px] uppercase tracking-widest font-medium">
-          {editingNoteId !== null ? "Edit Note" : "New Note"}
-        </span>
-        <button
-          onClick={closeDrawer}
-          className="w-6 h-6 flex items-center justify-center rounded text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+    <AnimatePresence>
+      {drawerOpen && (
+        <motion.div
+          initial={{ x: -12, opacity: 0 }}
+          animate={{ x: 0,   opacity: 1 }}
+          exit={{   x: -12, opacity: 0 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute top-0 bottom-0 left-52 w-80 bg-[#1A1C1E]/80 backdrop-blur-md border-r border-no-border/60 flex flex-col z-40 shadow-[4px_0_40px_rgba(0,0,0,0.6)] supports-[backdrop-filter]:bg-[#1A1C1E]/75"
+          onClick={(e) => e.stopPropagation()}
         >
-          <X size={14} />
-        </button>
-      </div>
+          {/* Header */}
+          <div className="flex items-center gap-2 px-4 py-4 border-b border-no-border shrink-0">
+            <span className="text-no-text/50 text-[10px] uppercase tracking-[0.15em] font-semibold flex-1">
+              {editingNoteId !== null ? "Edit Note" : "New Note"}
+            </span>
 
-      {/* Form */}
-      <div className="flex-1 flex flex-col gap-3 p-4 overflow-y-auto">
+            {/* Copy note link — only available for saved notes */}
+            {editingNoteId !== null && (
+              <button
+                onClick={handleCopyNoteLink}
+                title="Copy note link"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
+              >
+                {linkCopied
+                  ? <Check size={12} className="text-green-400" />
+                  : <Link size={12} />
+                }
+              </button>
+            )}
 
-        {/* Timeline selector */}
-        <div className="flex flex-col gap-1">
-          <label className="text-white/40 text-[10px] uppercase tracking-widest">Timeline</label>
-          <select
-            value={timelineId}
-            onChange={(e) => handleTimelineChange(Number(e.target.value))}
-            className="w-full bg-white/5 border border-white/15 rounded-md px-3 py-2 text-white/90 text-sm focus:outline-none focus:border-white/40 appearance-none cursor-pointer"
-          >
-            {timelines.map((tl) => (
-              <option key={tl.id} value={tl.id} className="bg-zinc-900 text-white">
-                {tl.title}
-              </option>
-            ))}
-          </select>
-        </div>
+            <button
+              onClick={closeDrawer}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-no-muted hover:text-no-text hover:bg-no-card transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
 
-        {/* Year */}
-        <div className="flex flex-col gap-1">
-          <label className="text-white/40 text-[10px] uppercase tracking-widest">Year</label>
-          <input
-            type="text"
-            value={yearInput}
-            onChange={(e) => { setYearInput(e.target.value); setYearError(false); }}
-            placeholder="e.g. 500 BC or 1066 AD"
-            className={`w-full bg-white/5 border rounded-md px-3 py-2 text-white/90 text-sm font-mono placeholder:text-white/25 focus:outline-none transition-colors ${
-              yearError ? "border-red-500/60 focus:border-red-500" : "border-white/15 focus:border-white/40"
-            }`}
-          />
-          {yearError && (
-            <p className="text-red-400 text-[10px]">Enter a valid year, e.g. "500 BC" or "1066 AD"</p>
-          )}
-        </div>
+          {/* Form */}
+          <div className="flex-1 flex flex-col gap-3.5 p-4 overflow-y-auto">
+            {/* Timeline */}
+            <div className="flex flex-col">
+              <label className={labelClass}>Timeline</label>
+              <select
+                value={timelineId}
+                onChange={(e) => handleTimelineChange(Number(e.target.value))}
+                className={`${inputClass} appearance-none cursor-pointer`}
+              >
+                {timelines.map((tl) => (
+                  <option key={tl.id} value={tl.id} className="bg-[#1F2226] text-[#E1E2E5]">
+                    {tl.title}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {/* Title */}
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Event title"
-          className="w-full bg-white/5 border border-white/15 rounded-md px-3 py-2 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/40"
-        />
+            {/* Year */}
+            <div className="flex flex-col">
+              <label className={labelClass}>Year</label>
+              <input
+                type="text"
+                value={yearInput}
+                onChange={(e) => { setYearInput(e.target.value); setYearError(false); }}
+                placeholder="e.g. 500 BC or 1066 AD"
+                className={`${inputClass} font-mono ${yearError ? "border-red-500/60 focus:border-red-500" : ""}`}
+              />
+              {yearError && (
+                <p className="text-red-400 text-[10px] mt-1">Enter a valid year — e.g. "500 BC" or "1066 AD"</p>
+              )}
+            </div>
 
-        {/* Content */}
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Notes…"
-          rows={7}
-          className="flex-1 w-full bg-white/5 border border-white/15 rounded-md px-3 py-2 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/40 resize-none"
-        />
-      </div>
+            {/* Title */}
+            <div className="flex flex-col">
+              <label className={labelClass}>Title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Event title"
+                className={inputClass}
+              />
+            </div>
 
-      {/* Actions */}
-      <div className="flex gap-2 px-4 py-4 border-t border-white/15 shrink-0">
-        <button
-          onClick={handleSave}
-          disabled={!title.trim()}
-          className="flex-1 bg-white text-black text-sm font-medium rounded-md px-3 py-2 transition-colors hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Save
-        </button>
-        {editingNoteId !== null && (
-          <button
-            onClick={handleDelete}
-            className="bg-red-500/20 hover:bg-red-500/40 text-red-400 text-sm font-medium rounded-md px-3 py-2 transition-colors"
-          >
-            Delete
-          </button>
-        )}
-      </div>
-    </div>
+            {/* Notes */}
+            <div className="flex flex-col flex-1">
+              <label className={labelClass}>Notes</label>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Write your notes…"
+                rows={7}
+                className={`${inputClass} resize-none flex-1`}
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 px-4 py-4 border-t border-no-border shrink-0">
+            <button
+              onClick={handleSave}
+              disabled={!title.trim()}
+              className="flex-1 bg-no-blue hover:bg-[#5B8FFF] disabled:opacity-40 disabled:cursor-not-allowed text-[#1A1C1E] text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors"
+            >
+              Save
+            </button>
+            {editingNoteId !== null && (
+              <button
+                onClick={handleDelete}
+                className="px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
