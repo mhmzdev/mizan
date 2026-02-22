@@ -6,12 +6,37 @@ import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
 import { useDialogStore } from "@/stores/dialogStore";
 import { formatYear } from "@/utils/yearUtils";
-import { YEAR_START } from "@/utils/constants";
+import { YEAR_START, YEAR_END, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR } from "@/utils/constants";
+
+function parseYear(raw: string): number | null {
+  const t = raw.trim().toUpperCase();
+  let year: number;
+  if (t.endsWith("BC")) {
+    const n = parseInt(t.replace("BC", "").trim());
+    if (isNaN(n)) return null;
+    year = -n;
+  } else if (t.endsWith("AD")) {
+    const n = parseInt(t.replace("AD", "").trim());
+    if (isNaN(n)) return null;
+    year = n - 1;
+  } else {
+    const n = parseInt(t);
+    if (isNaN(n)) return null;
+    year = n > 0 ? n - 1 : -n;
+  }
+  return Math.max(YEAR_START, Math.min(YEAR_END, year));
+}
 
 const MAX_TIMELINES = 5;
 
 export function Sidebar() {
   const centerYear = useTimelineStore((s) => s.centerYear);
+  const rangeStart = useTimelineStore((s) => s.rangeStart);
+  const rangeEnd   = useTimelineStore((s) => s.rangeEnd);
+  const setRange      = useTimelineStore((s) => s.setRange);
+  const clearRange    = useTimelineStore((s) => s.clearRange);
+  const setPendingNav = useTimelineStore((s) => s.setPendingNav);
+  const rangeActive = rangeStart !== null && rangeEnd !== null;
 
   const timelines      = useNotesStore((s) => s.timelines);
   const addTimeline    = useNotesStore((s) => s.addTimeline);
@@ -20,6 +45,10 @@ export function Sidebar() {
   const closeDrawer    = useNotesStore((s) => s.closeDrawer);
 
   const [jumpInput,          setJumpInput]          = useState("");
+  const [fromInput,          setFromInput]          = useState("");
+  const [toInput,            setToInput]            = useState("");
+  const [fromError,          setFromError]          = useState(false);
+  const [toError,            setToError]            = useState(false);
   const [showAddForm,        setShowAddForm]        = useState(false);
   const [newTitle,           setNewTitle]           = useState("");
   const [editingTimelineId,  setEditingTimelineId]  = useState<number | null>(null);
@@ -60,6 +89,39 @@ export function Sidebar() {
     },
     [jumpInput, closeDrawer]
   );
+
+  const handleApplyRange = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const start = parseYear(fromInput);
+      const end   = parseYear(toInput);
+      let valid = true;
+      if (start === null) { setFromError(true); valid = false; }
+      if (end   === null) { setToError(true);   valid = false; }
+      if (!valid) return;
+      // Auto-sort so "from" is always the earlier year.
+      const [s, f] = start! <= end! ? [start!, end!] : [end!, start!];
+      setRange(s, f);
+      // Navigate to fit the range in view.
+      const { viewportWidth } = useTimelineStore.getState();
+      const midYear   = Math.round((s + f) / 2);
+      const rangeYears = f - s + 1;
+      const fittingZoom = Math.max(
+        MIN_PX_PER_YEAR,
+        Math.min(MAX_PX_PER_YEAR, (viewportWidth * 0.75) / rangeYears),
+      );
+      setPendingNav({ year: midYear, zoom: fittingZoom });
+    },
+    [fromInput, toInput, setRange, setPendingNav]
+  );
+
+  const handleClearRange = useCallback(() => {
+    clearRange();
+    setFromInput("");
+    setToInput("");
+    setFromError(false);
+    setToError(false);
+  }, [clearRange]);
 
   const handleAddTimeline = useCallback(
     async (e: React.FormEvent) => {
@@ -107,7 +169,7 @@ export function Sidebar() {
     <aside className="w-full h-full bg-no-panel border-l border-no-border flex flex-col p-4 gap-5 overflow-y-auto panel-scroll">
       {/* Center year */}
       <div className="text-center">
-        <div className="text-no-muted text-[10px] uppercase tracking-[0.15em] mb-1.5 font-medium">
+        <div className="text-no-muted text-[12px] uppercase tracking-[0.15em] mb-1.5 font-medium">
           Center
         </div>
         <div className="text-no-text text-2xl font-mono font-semibold tracking-tight">
@@ -119,7 +181,7 @@ export function Sidebar() {
 
       {/* Jump to year */}
       <div>
-        <div className="text-no-muted text-[10px] uppercase tracking-[0.15em] mb-2.5 font-medium">
+        <div className="text-no-muted text-[12px] uppercase tracking-[0.15em] mb-2.5 font-medium">
           Jump to Year
         </div>
         <form onSubmit={handleJump} className="flex flex-col gap-2">
@@ -141,10 +203,74 @@ export function Sidebar() {
 
       <div className="h-px bg-no-border" />
 
+      {/* Date Range */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="text-no-muted text-[12px] uppercase tracking-[0.15em] font-medium">
+            Date Range
+          </div>
+          {rangeActive && (
+            <button
+              onClick={handleClearRange}
+              className="text-[9px] text-no-blue/70 hover:text-no-blue uppercase tracking-wider transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {rangeActive && (
+          <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 rounded-lg bg-no-blue/10 border border-no-blue/20">
+            <div className="w-1.5 h-1.5 rounded-full bg-no-blue shrink-0" />
+            <span className="text-no-blue/80 text-[12px] font-mono flex-1 truncate">
+              {formatYear(rangeStart!)} — {formatYear(rangeEnd!)}
+            </span>
+          </div>
+        )}
+
+        <form onSubmit={handleApplyRange} className="flex flex-col gap-2">
+          <div className="flex gap-1.5">
+            <div className="flex-1 flex flex-col gap-1">
+              <span className="text-no-muted/60 text-[9px] uppercase tracking-[0.1em]">From</span>
+              <input
+                type="text"
+                value={fromInput}
+                onChange={(e) => { setFromInput(e.target.value); setFromError(false); }}
+                placeholder="e.g. 500 BC"
+                className={`w-full bg-no-card border rounded-lg px-2 py-1.5 text-no-text text-xs placeholder:text-no-muted/60 focus:outline-none transition-colors ${
+                  fromError ? "border-red-500/60" : "border-no-border focus:border-no-blue/50"
+                }`}
+              />
+            </div>
+            <div className="flex-1 flex flex-col gap-1">
+              <span className="text-no-muted/60 text-[9px] uppercase tracking-[0.1em]">To</span>
+              <input
+                type="text"
+                value={toInput}
+                onChange={(e) => { setToInput(e.target.value); setToError(false); }}
+                placeholder="e.g. 500 AD"
+                className={`w-full bg-no-card border rounded-lg px-2 py-1.5 text-no-text text-xs placeholder:text-no-muted/60 focus:outline-none transition-colors ${
+                  toError ? "border-red-500/60" : "border-no-border focus:border-no-blue/50"
+                }`}
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={!fromInput.trim() || !toInput.trim()}
+            className="w-full bg-no-blue/10 hover:bg-no-blue/20 disabled:opacity-40 disabled:cursor-not-allowed text-no-blue text-sm font-semibold rounded-lg px-3 py-2 transition-colors border border-no-blue/20 hover:border-no-blue/40"
+          >
+            Apply Range
+          </button>
+        </form>
+      </div>
+
+      <div className="h-px bg-no-border" />
+
       {/* Timelines */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-no-muted text-[10px] uppercase tracking-[0.15em] font-medium">
+          <span className="text-no-muted text-[12px] uppercase tracking-[0.15em] font-medium">
             Timelines
           </span>
           {canAdd && (
@@ -238,19 +364,19 @@ export function Sidebar() {
               </button>
             </div>
             {timelines.length >= MAX_TIMELINES - 1 && (
-              <p className="text-no-muted/60 text-[10px]">{MAX_TIMELINES - timelines.length} slot remaining</p>
+              <p className="text-no-muted/60 text-[12px]">{MAX_TIMELINES - timelines.length} slot remaining</p>
             )}
           </form>
         )}
 
         {!canAdd && !showAddForm && (
-          <p className="text-no-muted/50 text-[10px]">Max {MAX_TIMELINES} timelines reached</p>
+          <p className="text-no-muted/50 text-[12px]">Max {MAX_TIMELINES} timelines reached</p>
         )}
       </div>
 
       {/* Shortcuts */}
       <div className="mt-auto">
-        <div className="text-no-muted/75 text-[10px] space-y-1 font-mono">
+        <div className="text-no-muted/75 text-[12px] space-y-1 font-mono">
           <p>Scroll — Zoom</p>
           <p>Shift+Scroll — Pan</p>
         </div>

@@ -32,7 +32,7 @@ function parseYearInput(raw: string): number | null {
 const inputClass =
   "w-full bg-[#1A1C1E]/60 border border-no-border/70 rounded-lg px-3 py-2 text-no-text text-sm placeholder:text-no-muted/50 focus:outline-none focus:border-no-blue/50 transition-colors";
 
-const labelClass = "text-no-muted text-[10px] uppercase tracking-[0.12em] font-medium mb-1";
+const labelClass = "text-no-muted text-[12px] uppercase tracking-[0.12em] font-medium mb-1";
 
 interface NoteDrawerProps {
   panelWidth: number;
@@ -130,7 +130,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
     <>
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-no-border shrink-0">
-        <span className="text-no-text/50 text-[10px] uppercase tracking-[0.15em] font-semibold flex-1">
+        <span className="text-no-text/50 text-[12px] uppercase tracking-[0.15em] font-semibold flex-1">
           {editingNoteId !== null ? "Edit Note" : "New Note"}
         </span>
 
@@ -182,7 +182,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
             className={`${inputClass} font-mono ${yearError ? "border-red-500/60 focus:border-red-500" : ""}`}
           />
           {yearError && (
-            <p className="text-red-400 text-[10px] mt-1">Enter a valid year — e.g. "500 BC" or "1066 AD"</p>
+            <p className="text-red-400 text-[12px] mt-1">Enter a valid year — e.g. "500 BC" or "1066 AD"</p>
           )}
         </div>
 

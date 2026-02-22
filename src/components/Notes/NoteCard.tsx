@@ -33,7 +33,7 @@ export function NoteCard({ note }: NoteCardProps) {
       className="w-full text-left px-3 py-3 rounded-xl bg-no-card hover:bg-[#2A2F37] border border-no-border hover:border-[#3A3F47] transition-all group"
     >
       <div className="flex items-center justify-between gap-1 mb-1.5">
-        <span className="text-no-gold/80 text-[10px] font-mono">{formatYear(note.year)}</span>
+        <span className="text-no-gold/80 text-[12px] font-mono">{formatYear(note.year)}</span>
         {timelineName && (
           <span
             className="text-[9px] uppercase tracking-wide truncate max-w-[80px] font-medium"
@@ -45,7 +45,7 @@ export function NoteCard({ note }: NoteCardProps) {
       </div>
       <div className="text-no-text/90 text-xs font-medium leading-snug truncate">{note.title}</div>
       {note.content && (
-        <div className="text-no-muted/80 text-[11px] mt-1 line-clamp-2 leading-relaxed">{note.content}</div>
+        <div className="text-no-muted/80 text-[13px] mt-1 line-clamp-2 leading-relaxed">{note.content}</div>
       )}
     </button>
   );

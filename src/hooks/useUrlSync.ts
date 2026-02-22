@@ -20,21 +20,28 @@ function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-/** Parse the three deep-link params from the current URL. */
+/** Parse deep-link params from the current URL. */
 function parseUrlParams(): {
   year: number | null;
   zoom: number | null;
   noteId: number | null;
+  rangeFrom: number | null;
+  rangeTo:   number | null;
 } {
-  if (typeof window === "undefined") return { year: null, zoom: null, noteId: null };
+  if (typeof window === "undefined")
+    return { year: null, zoom: null, noteId: null, rangeFrom: null, rangeTo: null };
   const p = new URLSearchParams(window.location.search);
-  const y = p.get("year");
-  const z = p.get("zoom");
-  const n = p.get("note");
+  const y  = p.get("year");
+  const z  = p.get("zoom");
+  const n  = p.get("note");
+  const rf = p.get("range_from");
+  const rt = p.get("range_to");
   return {
-    year:   y !== null ? parseInt(y,   10) : null,
-    zoom:   z !== null ? parseFloat(z)     : null,
-    noteId: n !== null ? parseInt(n,   10) : null,
+    year:      y  !== null ? parseInt(y,  10) : null,
+    zoom:      z  !== null ? parseFloat(z)    : null,
+    noteId:    n  !== null ? parseInt(n,  10) : null,
+    rangeFrom: rf !== null ? parseInt(rf, 10) : null,
+    rangeTo:   rt !== null ? parseInt(rt, 10) : null,
   };
 }
 
@@ -61,7 +68,7 @@ export function useUrlSync() {
 
   // ── 1. One-time initialisation ─────────────────────────────────────────────
   useEffect(() => {
-    const { year, zoom, noteId } = parseUrlParams();
+    const { year, zoom, noteId, rangeFrom, rangeTo } = parseUrlParams();
 
     // ?note= deep links are handled separately in page.tsx after notes load.
     if (noteId !== null) return;
@@ -71,6 +78,10 @@ export function useUrlSync() {
       const safeZoom = clamp(zoom ?? PX_PER_YEAR.centuries, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR);
       const safeYear = clamp(year ?? useTimelineStore.getState().centerYear, YEAR_START, YEAR_END);
       useTimelineStore.getState().setPendingNav({ year: safeYear, zoom: safeZoom });
+      // Also restore range if encoded in the URL.
+      if (rangeFrom !== null && rangeTo !== null) {
+        useTimelineStore.getState().setRange(rangeFrom, rangeTo);
+      }
       return;
     }
 
@@ -78,12 +89,18 @@ export function useUrlSync() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const { year: sy, zoom: sz } = JSON.parse(raw) as { year: number; zoom: number };
-        if (Number.isFinite(sy) && Number.isFinite(sz)) {
+        const saved = JSON.parse(raw) as {
+          year: number; zoom: number;
+          rangeFrom?: number; rangeTo?: number;
+        };
+        if (Number.isFinite(saved.year) && Number.isFinite(saved.zoom)) {
           useTimelineStore.getState().setPendingNav({
-            year: clamp(sy, YEAR_START, YEAR_END),
-            zoom: clamp(sz, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR),
+            year: clamp(saved.year, YEAR_START, YEAR_END),
+            zoom: clamp(saved.zoom, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR),
           });
+        }
+        if (Number.isFinite(saved.rangeFrom) && Number.isFinite(saved.rangeTo)) {
+          useTimelineStore.getState().setRange(saved.rangeFrom!, saved.rangeTo!);
         }
       }
     } catch {
@@ -112,9 +129,20 @@ export function useUrlSync() {
         const params = new URLSearchParams();
         params.set("year", String(year));
         params.set("zoom", String(zoom));
+        if (timeline.rangeStart !== null && timeline.rangeEnd !== null) {
+          params.set("range_from", String(timeline.rangeStart));
+          params.set("range_to",   String(timeline.rangeEnd));
+        }
         window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
-        // Persist so the next page load restores this position.
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ year, zoom })); } catch { /* quota */ }
+        // Persist so the next page load restores this position + range.
+        try {
+          const data: Record<string, number> = { year, zoom };
+          if (timeline.rangeStart !== null && timeline.rangeEnd !== null) {
+            data.rangeFrom = timeline.rangeStart;
+            data.rangeTo   = timeline.rangeEnd;
+          }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch { /* quota */ }
       }
     }
 

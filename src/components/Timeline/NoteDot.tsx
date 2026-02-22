@@ -74,10 +74,10 @@ export function NoteDot({ note, pxPerYear, stackIndex, color }: NoteDotProps) {
             className="absolute top-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
           >
             <div className="bg-no-card/95 border border-no-border/70 rounded-xl px-3 py-2 shadow-xl text-center whitespace-nowrap backdrop-blur-sm">
-              <p className="text-no-text text-[11px] font-semibold leading-snug max-w-[160px] truncate">
+              <p className="text-no-text text-[13px] font-semibold leading-snug max-w-[160px] truncate">
                 {note.title || "Untitled"}
               </p>
-              <p className="text-no-muted text-[10px] font-mono leading-snug mt-0.5">
+              <p className="text-no-muted text-[12px] font-mono leading-snug mt-0.5">
                 {formatYear(note.year)}
               </p>
             </div>

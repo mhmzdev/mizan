@@ -61,7 +61,7 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
 
       {/* Track label */}
       <div
-        className="sticky top-10 left-3 text-[10px] uppercase tracking-[0.15em] z-10 pointer-events-none select-none inline-block font-semibold transition-colors duration-300"
+        className="sticky top-10 left-3 text-[12px] uppercase tracking-[0.15em] z-10 pointer-events-none select-none inline-block font-semibold transition-colors duration-300"
         style={{ color: isActive ? `${color}D9` : "rgba(108,115,128,0.65)" }}
       >
         {timeline.title}

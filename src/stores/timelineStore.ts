@@ -9,12 +9,17 @@ interface TimelineState {
   targetPxPerYear: number | null; // set by sidebar to trigger an animated transition
   /** Pending instant navigation (no animation) — consumed by TimelineContainer. */
   pendingNav: { year: number; zoom: number } | null;
+  /** Active date-range filter — null when no range is set. */
+  rangeStart: number | null;
+  rangeEnd:   number | null;
 
   setPxPerYear: (pxPerYear: number) => void;
   setScrollLeft: (scrollLeft: number) => void;
   setViewportWidth: (width: number) => void;
   setTargetPxPerYear: (px: number | null) => void;
   setPendingNav: (nav: { year: number; zoom: number } | null) => void;
+  setRange: (start: number, end: number) => void;
+  clearRange: () => void;
 }
 
 export const useTimelineStore = create<TimelineState>((set, get) => ({
@@ -24,6 +29,8 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   centerYear: YEAR_START,
   targetPxPerYear: null,
   pendingNav: null,
+  rangeStart: null,
+  rangeEnd:   null,
 
   /** Zoom to a new pxPerYear, keeping the current centerYear pinned. */
   setPxPerYear: (newPx: number) => {
@@ -50,4 +57,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   },
 
   setPendingNav: (nav) => set({ pendingNav: nav }),
+
+  setRange: (start, end) => set({ rangeStart: start, rangeEnd: end }),
+  clearRange: () => set({ rangeStart: null, rangeEnd: null }),
 }));

@@ -60,6 +60,10 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
   const setScrollLeft   = useTimelineStore((s) => s.setScrollLeft);
   const setViewportWidth = useTimelineStore((s) => s.setViewportWidth);
 
+  const rangeStart = useTimelineStore((s) => s.rangeStart);
+  const rangeEnd   = useTimelineStore((s) => s.rangeEnd);
+  const rangeActive = rangeStart !== null && rangeEnd !== null;
+
   const mode = getModeFromPxPerYear(pxPerYear);
   const totalWidth = pxPerYear * TOTAL_YEARS;
 
@@ -391,7 +395,72 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
         className="absolute inset-0 overflow-x-auto overflow-y-hidden timeline-scroll cursor-none"
         onScroll={handleScroll}
       >
-        <div className="flex flex-col" style={{ width: totalWidth, minHeight: "100%" }}>
+        <div className="relative flex flex-col" style={{ width: totalWidth, minHeight: "100%" }}>
+
+          {/* ── Start-of-timeline boundary ─────────────────────────────── */}
+          <div className="absolute top-0 bottom-0 left-0 w-px bg-no-muted/30 pointer-events-none z-20" />
+          <div className="absolute top-3 left-2 pointer-events-none z-20 select-none">
+            <div className="text-no-muted/75 text-[13px] font-mono font-semibold whitespace-nowrap">
+              {formatYear(YEAR_START)}
+            </div>
+            <div className="text-no-muted/35 text-[11px] uppercase tracking-[0.12em] mt-0.5 whitespace-nowrap">
+              Start of timeline
+            </div>
+          </div>
+
+          {/* ── End-of-timeline boundary ───────────────────────────────── */}
+          <div className="absolute top-0 bottom-0 right-0 w-px bg-no-muted/30 pointer-events-none z-20" />
+          <div className="absolute top-3 right-2 pointer-events-none z-20 select-none text-right">
+            <div className="text-no-muted/75 text-[13px] font-mono font-semibold whitespace-nowrap">
+              {formatYear(YEAR_END)}
+            </div>
+            <div className="text-no-muted/35 text-[11px] uppercase tracking-[0.12em] mt-0.5 whitespace-nowrap">
+              End of timeline
+            </div>
+          </div>
+
+          {/* ── Date-range overlays ────────────────────────────────────── */}
+          {rangeActive && (() => {
+            const startPx = (rangeStart! - YEAR_START) * pxPerYear;
+            const endPx   = (rangeEnd!   - YEAR_START + 1) * pxPerYear;
+            return (
+              <>
+                {/* Dim: left of range */}
+                {startPx > 0 && (
+                  <div
+                    className="absolute top-0 bottom-0 left-0 pointer-events-none z-[21]"
+                    style={{ width: startPx, background: "rgba(10,12,14,0.62)" }}
+                  />
+                )}
+                {/* Dim: right of range */}
+                {endPx < totalWidth && (
+                  <div
+                    className="absolute top-0 bottom-0 pointer-events-none z-[21]"
+                    style={{ left: endPx, right: 0, background: "rgba(10,12,14,0.62)" }}
+                  />
+                )}
+                {/* Range start boundary line */}
+                <div
+                  className="absolute top-0 bottom-0 w-[2px] pointer-events-none z-[22]"
+                  style={{
+                    left: startPx,
+                    background: "rgba(116,160,255,0.7)",
+                    boxShadow: "2px 0 10px rgba(116,160,255,0.25)",
+                  }}
+                />
+                {/* Range end boundary line */}
+                <div
+                  className="absolute top-0 bottom-0 w-[2px] pointer-events-none z-[22]"
+                  style={{
+                    left: endPx,
+                    background: "rgba(116,160,255,0.7)",
+                    boxShadow: "-2px 0 10px rgba(116,160,255,0.25)",
+                  }}
+                />
+              </>
+            );
+          })()}
+
           {timelines.map((timeline, idx) => (
             <TimelineTrack
               key={timeline.id}

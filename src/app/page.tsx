@@ -194,7 +194,7 @@ export default function Home() {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="h-12 border-b border-no-border flex items-center px-5 shrink-0 bg-no-panel z-50 relative">
-        <h1 className="text-no-text/70 text-[11px] font-mono tracking-[0.25em] uppercase">
+        <h1 className="text-no-text/70 text-[13px] font-mono tracking-[0.25em] uppercase">
           Mizan — The Balance of Time & Thought
         </h1>
         <button
@@ -243,7 +243,7 @@ export default function Home() {
             className="absolute z-30 top-1/2 -translate-y-1/2 h-10 w-[18px] bg-no-panel
                        border-y border-r border-no-border rounded-r-lg
                        flex items-center justify-center
-                       text-no-muted hover:text-no-blue hover:bg-no-blue/5 transition-colors"
+                       text-no-muted hover:text-white hover:bg-no-blue hover:border-no-blue transition-colors"
           >
             <ChevronLeft
               size={10}
@@ -268,7 +268,7 @@ export default function Home() {
             className="absolute z-30 top-1/2 -translate-y-1/2 h-10 w-[18px] bg-no-panel
                        border-y border-l border-no-border rounded-l-lg
                        flex items-center justify-center
-                       text-no-muted hover:text-no-blue hover:bg-no-blue/5 transition-colors"
+                       text-no-muted hover:text-white hover:bg-no-blue hover:border-no-blue transition-colors"
           >
             <ChevronRight
               size={10}

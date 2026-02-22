@@ -1,59 +1,44 @@
 # Mizan — Infinite Timeline
 
-A high-performance, virtualized historical timeline (4001 BC → 2026 AD) built with Next.js App Router.
+A local-first historical timeline (4001 BC → 2026 AD) for navigating and annotating history. Users scroll horizontally through time, zoom between century/decade/year views, and attach notes to specific years across multiple named timelines.
 
 ## Stack
-- **Next.js 15** (App Router, `src/` dir, `@/*` alias)
-- **Tailwind CSS v4** (`@tailwindcss/postcss`)
-- **Zustand 5** — scroll state and zoom mode
-- **Lucide-react** — icons
+- **Next.js 15** App Router, `src/` dir, `@/*` alias
+- **Tailwind CSS v4** — custom theme via `@theme` in `globals.css`
+- **Zustand 5** — all UI state (`timelineStore`, `notesStore`, `dialogStore`)
+- **Dexie (IndexedDB)** — local note + timeline persistence (`src/lib/db.ts`)
+- **Framer Motion** — panel animations and zoom transitions
+- **Roboto Mono** — sole font (loaded via `next/font/google`, self-hosted at build time)
+- **Lucide React** — icons
 
 ## Dev
 ```
 npm run dev    # http://localhost:9999
-npm run build  # production build (must pass before shipping)
+npm run build  # must pass before every ship — catches type errors
 ```
 
-## Key Architecture
+## Year Coordinate System
+**This is the most important domain concept. Every feature touches it.**
 
-**Year coordinate system** — internal integers from -4000 (4001 BC) to 2025 (2026 AD).
-- Display: `year < 0` → `Math.abs(year) + " BC"`, `year >= 0` → `(year + 1) + " AD"`
-- Implemented in `src/utils/yearUtils.ts:formatYear`
+Internal representation: integers from `YEAR_START = -4000` (4001 BC) to `YEAR_END = 2025` (2026 AD).
+- `year < 0` → display as `Math.abs(year) + " BC"` (e.g. `-44` → `"44 BC"`)
+- `year >= 0` → display as `(year + 1) + " AD"` (e.g. `0` → `"1 AD"`)
+- Implemented at `src/utils/yearUtils.ts:formatYear`
 
-**Zoom modes** — three levels, px-per-year defined in `src/utils/constants.ts:PX_PER_YEAR`
-- Centuries: 5px/yr | Decades: 50px/yr | Years: 500px/yr
+Pixel position: `px = (year - YEAR_START) * pxPerYear`
 
-**Virtualization** — only renders years in viewport + 5-year buffer. Logic in `src/utils/virtualization.ts:getVisibleRange`. DOM count stays under ~500 at all times.
+## Critical Patterns
 
-**State** — `src/stores/timelineStore.ts`. Mode switching preserves `centerYear` by recalculating `scrollLeft` for the new scale.
+**Navigate the timeline programmatically** — always use `setPendingNav({ year, zoom })` from `timelineStore`. Never mutate `scrollLeft` directly except inside `TimelineContainer`.
 
-## File Map
-```
-src/
-  app/                          # Next.js App Router
-  components/
-    Timeline/
-      TimelineContainer.tsx     # scroll host, virtualization loop
-      TimelineTrack.tsx         # single horizontal lane
-      YearBlock.tsx             # tick + label (React.memo)
-      EventDot.tsx              # hover tooltip (Year mode only)
-    Sidebar/
-      Sidebar.tsx               # mode switcher, center year, jump-to-year
-  stores/timelineStore.ts       # Zustand store
-  utils/
-    constants.ts                # YEAR_START, YEAR_END, PX_PER_YEAR, BUFFER
-    yearUtils.ts                # formatYear, yearToPx, pxToYear, getTotalWidth
-    virtualization.ts           # getVisibleRange()
-  data/
-    events.json                 # 7,000 seed events (stress test data)
-    tracks.ts                   # track definitions
-  types/index.ts                # ZoomMode, TimelineEvent, Track, VisibleRange
-```
+**Continuous zoom** — `pxPerYear` is a live float, not a discrete mode string. Zoom snapshots live in `PX_PER_YEAR` (`src/utils/constants.ts`) but the store holds an arbitrary number in `[MIN_PX_PER_YEAR, MAX_PX_PER_YEAR]`.
 
-## Docs
-Active project docs live in `docs/`:
-- `docs/bugs/`      — known bugs and reproduction steps
-- `docs/features/`  — planned features and specs
-- `docs/plans/`     — implementation plans (PRD in `plans/PRD_v1.md`)
+**Notes are in IndexedDB** — all note/timeline reads go through `src/stores/notesStore.ts` which wraps `src/lib/db.ts` (Dexie). Never read `db` directly from a component.
 
-Before implementing a feature or fixing a bug, check the relevant doc file first.
+**Timeline colors** — always use `getTimelineColor(index)` from `src/utils/timelineColors.ts` — never hardcode a color for a timeline lane.
+
+## Deep Dives
+- Architecture, file map, store shapes, z-index ladder, persistence keys → `docs/architecture.md`
+- Conventions and patterns for adding features → `docs/patterns.md`
+- Planned and shipped features → `docs/features/`
+- Bug log → `docs/bugs/`

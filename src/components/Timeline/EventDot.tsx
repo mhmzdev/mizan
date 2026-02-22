@@ -49,10 +49,10 @@ function EventDotInner({ event, mode }: EventDotProps) {
         className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none transition-all duration-300"
         style={{ top: hovered ? 62 : 50, opacity: hovered ? 1 : 0, width: 160 }}
       >
-        <p className="text-no-text text-[11px] uppercase tracking-widest font-semibold text-center leading-snug">
+        <p className="text-no-text text-[13px] uppercase tracking-widest font-semibold text-center leading-snug">
           {event.title}
         </p>
-        <p className="text-no-muted text-[10px] font-mono mt-1">
+        <p className="text-no-muted text-[12px] font-mono mt-1">
           {formatYear(event.year)}
         </p>
       </div>

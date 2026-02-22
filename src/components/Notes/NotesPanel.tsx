@@ -4,29 +4,30 @@ import React, { useState } from "react";
 import { Plus, Search, StickyNote, X } from "lucide-react";
 import { useNotesStore } from "@/stores/notesStore";
 import { useTimelineStore } from "@/stores/timelineStore";
+import { formatYear } from "@/utils/yearUtils";
 import { NoteCard } from "./NoteCard";
 
 export function NotesPanel() {
   const notes      = useNotesStore((s) => s.notes);
   const openDrawer = useNotesStore((s) => s.openDrawer);
   const centerYear = useTimelineStore((s) => s.centerYear);
+  const rangeStart = useTimelineStore((s) => s.rangeStart);
+  const rangeEnd   = useTimelineStore((s) => s.rangeEnd);
+  const clearRange = useTimelineStore((s) => s.clearRange);
+  const rangeActive = rangeStart !== null && rangeEnd !== null;
 
   const [search, setSearch] = useState("");
 
-  const query    = search.trim().toLowerCase();
-  const filtered = query
-    ? notes.filter(
-        (n) =>
-          n.title.toLowerCase().includes(query) ||
-          n.content.toLowerCase().includes(query)
-      )
-    : notes;
+  const query = search.trim().toLowerCase();
+  const filtered = notes
+    .filter((n) => !rangeActive || (n.year >= rangeStart! && n.year <= rangeEnd!))
+    .filter((n) => !query || n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query));
 
   return (
     <aside className="w-full h-full bg-no-panel border-r border-no-border flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-no-border shrink-0">
-        <span className="text-no-muted text-[10px] uppercase tracking-[0.15em] font-semibold">
+        <span className="text-no-muted text-[12px] uppercase tracking-[0.15em] font-semibold">
           Notes
         </span>
         <button
@@ -38,6 +39,23 @@ export function NotesPanel() {
         </button>
       </div>
 
+      {/* Range filter badge */}
+      {rangeActive && (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-no-border shrink-0 bg-no-blue/5">
+          <div className="w-1.5 h-1.5 rounded-full bg-no-blue shrink-0" />
+          <span className="text-no-blue/75 text-[12px] font-mono flex-1 truncate">
+            {formatYear(rangeStart!)} — {formatYear(rangeEnd!)}
+          </span>
+          <button
+            onClick={clearRange}
+            className="text-no-muted/50 hover:text-no-muted transition-colors"
+            title="Clear range"
+          >
+            <X size={10} />
+          </button>
+        </div>
+      )}
+
       {/* Search bar — only shown when there are notes */}
       {notes.length > 0 && (
         <div className="px-2.5 py-2 border-b border-no-border shrink-0">
@@ -48,7 +66,7 @@ export function NotesPanel() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search notes…"
-              className="w-full bg-no-card/60 border border-no-border/60 rounded-lg pl-7 pr-7 py-1.5 text-no-text text-[11px] placeholder:text-no-muted/60 focus:outline-none focus:border-no-blue/40 transition-colors"
+              className="w-full bg-no-card/60 border border-no-border/60 rounded-lg pl-7 pr-7 py-1.5 text-no-text text-[13px] placeholder:text-no-muted/60 focus:outline-none focus:border-no-blue/40 transition-colors"
             />
             {search && (
               <button
@@ -69,7 +87,7 @@ export function NotesPanel() {
             <StickyNote size={20} className="text-no-muted/25" />
             <div className="space-y-1">
               <p className="text-no-muted/50 text-xs">No notes yet</p>
-              <p className="text-no-muted/35 text-[10px] leading-relaxed">
+              <p className="text-no-muted/35 text-[12px] leading-relaxed">
                 Press + to create your first note
               </p>
             </div>
@@ -77,15 +95,17 @@ export function NotesPanel() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 px-4 text-center h-full">
             <Search size={18} className="text-no-muted/20" />
-            <p className="text-no-muted/40 text-xs">No results for "{search}"</p>
+            <p className="text-no-muted/40 text-xs">
+              {query ? `No results for "${search}"` : "No notes in this range"}
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5 p-2">
             {filtered.map((note) => (
               <NoteCard key={note.id} note={note} />
             ))}
-            {query && (
-              <p className="text-no-muted/35 text-[10px] text-center py-1">
+            {(query || rangeActive) && (
+              <p className="text-no-muted/35 text-[12px] text-center py-1">
                 {filtered.length} of {notes.length} notes
               </p>
             )}
