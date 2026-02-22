@@ -6,6 +6,7 @@ export interface Timeline {
   /** Ties this timeline to a fixed event track in events.json. Only set on default timelines. */
   eventTrack?: "global" | "personal";
   isDefault: boolean;
+  hidden?: boolean;
   createdAt: number;
 }
 

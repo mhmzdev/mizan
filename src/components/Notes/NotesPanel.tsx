@@ -21,20 +21,25 @@ export function NotesPanel() {
   const [search,             setSearch]             = useState("");
   const [selectedTimelineId, setSelectedTimelineId] = useState<number | null>(null);
 
-  // Clear timeline filter if that timeline is deleted
+  // Clear timeline filter if that timeline is deleted or hidden
   useEffect(() => {
-    if (selectedTimelineId !== null && !timelines.some((t) => t.id === selectedTimelineId)) {
-      setSelectedTimelineId(null);
-    }
+    if (selectedTimelineId === null) return;
+    const tl = timelines.find((t) => t.id === selectedTimelineId);
+    if (!tl || tl.hidden) setSelectedTimelineId(null);
   }, [timelines, selectedTimelineId]);
+
+  const hiddenIds = new Set(timelines.filter((t) => t.hidden).map((t) => t.id!));
+  const visibleTimelines = timelines.filter((t) => !t.hidden);
 
   const query = search.trim().toLowerCase();
   const filtered = notes
+    .filter((n) => !hiddenIds.has(n.timelineId))
     .filter((n) => selectedTimelineId === null || n.timelineId === selectedTimelineId)
     .filter((n) => !rangeActive || (n.year >= rangeStart! && n.year <= rangeEnd!))
     .filter((n) => !query || n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query));
 
-  const showTabs = notes.length > 0 && timelines.length > 1;
+  const visibleNotes = notes.filter((n) => !hiddenIds.has(n.timelineId));
+  const showTabs = visibleNotes.length > 0 && visibleTimelines.length > 1;
   const isFiltered = query || rangeActive || selectedTimelineId !== null;
 
   return (
@@ -68,7 +73,8 @@ export function NotesPanel() {
             All
           </button>
 
-          {timelines.map((tl, i) => {
+          {visibleTimelines.map((tl) => {
+            const i = timelines.indexOf(tl);
             const color   = getTimelineColor(i);
             const isSelected = selectedTimelineId === tl.id;
             return (
@@ -116,8 +122,8 @@ export function NotesPanel() {
         </div>
       )}
 
-      {/* Search bar — only shown when there are notes */}
-      {notes.length > 0 && (
+      {/* Search bar — only shown when there are visible notes */}
+      {visibleNotes.length > 0 && (
         <div className="px-2.5 py-2 border-b border-no-border shrink-0">
           <div className="relative flex items-center">
             <Search size={11} className="absolute left-2.5 text-no-muted/50 pointer-events-none" />
@@ -142,7 +148,7 @@ export function NotesPanel() {
 
       {/* List or empty state */}
       <div className="flex-1 overflow-y-auto panel-scroll">
-        {notes.length === 0 ? (
+        {visibleNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-4 text-center h-full">
             <StickyNote size={20} className="text-no-muted/25" />
             <div className="space-y-1">
@@ -166,7 +172,7 @@ export function NotesPanel() {
             ))}
             {isFiltered && (
               <p className="text-no-muted/35 text-[12px] text-center py-1">
-                {filtered.length} of {notes.length} notes
+                {filtered.length} of {visibleNotes.length} notes
               </p>
             )}
           </div>

@@ -461,19 +461,21 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
             );
           })()}
 
-          {timelines.map((timeline, idx) => (
-            <TimelineTrack
-              key={timeline.id}
-              timeline={timeline}
-              timelineIndex={idx}
-              mode={mode}
-              pxPerYear={pxPerYear}
-              visibleRange={visibleRange}
-              events={eventsByYear}
-              notes={visibleNotesByTimeline.get(timeline.id!) ?? []}
-              isActive={drawerOpen && timeline.id === drawerTimelineId}
-            />
-          ))}
+          {timelines
+            .filter((tl) => !tl.hidden)
+            .map((timeline) => (
+              <TimelineTrack
+                key={timeline.id}
+                timeline={timeline}
+                timelineIndex={timelines.indexOf(timeline)}
+                mode={mode}
+                pxPerYear={pxPerYear}
+                visibleRange={visibleRange}
+                events={eventsByYear}
+                notes={visibleNotesByTimeline.get(timeline.id!) ?? []}
+                isActive={drawerOpen && timeline.id === drawerTimelineId}
+              />
+            ))}
         </div>
       </div>
 

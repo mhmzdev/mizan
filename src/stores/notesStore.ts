@@ -28,6 +28,7 @@ interface NotesState {
   addTimeline: (title: string) => Promise<void>;
   renameTimeline: (id: number, title: string) => Promise<void>;
   deleteTimeline: (id: number) => Promise<void>;
+  toggleTimelineHidden: (id: number) => Promise<void>;
   setLastTimelineId: (id: number) => void;
   setDrawerTimelineId: (id: number | null) => void;
 
@@ -67,6 +68,14 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   renameTimeline: async (id, title) => {
     await db.timelines.update(id, {title: title.trim()});
+    const timelines = await db.timelines.toArray().then((ts) => ts.sort((a, b) => a.createdAt - b.createdAt));
+    set({timelines});
+  },
+
+  toggleTimelineHidden: async (id) => {
+    const tl = get().timelines.find((t) => t.id === id);
+    if (!tl) return;
+    await db.timelines.update(id, {hidden: !tl.hidden});
     const timelines = await db.timelines.toArray().then((ts) => ts.sort((a, b) => a.createdAt - b.createdAt));
     set({timelines});
   },

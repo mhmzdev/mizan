@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef } from "react";
-import { Plus, X, Pencil, Check } from "lucide-react";
+import { Plus, X, Pencil, Check, Eye, EyeOff } from "lucide-react";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
 import { useDialogStore } from "@/stores/dialogStore";
@@ -38,11 +38,12 @@ export function Sidebar() {
   const setPendingNav = useTimelineStore((s) => s.setPendingNav);
   const rangeActive = rangeStart !== null && rangeEnd !== null;
 
-  const timelines      = useNotesStore((s) => s.timelines);
-  const addTimeline    = useNotesStore((s) => s.addTimeline);
-  const renameTimeline = useNotesStore((s) => s.renameTimeline);
-  const deleteTimeline = useNotesStore((s) => s.deleteTimeline);
-  const closeDrawer    = useNotesStore((s) => s.closeDrawer);
+  const timelines             = useNotesStore((s) => s.timelines);
+  const addTimeline           = useNotesStore((s) => s.addTimeline);
+  const renameTimeline        = useNotesStore((s) => s.renameTimeline);
+  const deleteTimeline        = useNotesStore((s) => s.deleteTimeline);
+  const toggleTimelineHidden  = useNotesStore((s) => s.toggleTimelineHidden);
+  const closeDrawer           = useNotesStore((s) => s.closeDrawer);
 
   const [jumpInput,          setJumpInput]          = useState("");
   const [fromInput,          setFromInput]          = useState("");
@@ -312,8 +313,19 @@ export function Sidebar() {
                 </div>
               ) : (
                 /* ── Normal display row ── */
-                <div className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-no-card border border-no-border group">
-                  <span className="text-no-text/70 text-xs truncate leading-snug flex-1">{tl.title}</span>
+                <div className={`flex items-center gap-1 px-2.5 py-2 rounded-lg border border-no-border group transition-opacity ${tl.hidden ? "opacity-50 bg-no-card/40" : "bg-no-card"}`}>
+                  <span className={`text-xs truncate leading-snug flex-1 ${tl.hidden ? "text-no-muted" : "text-no-text/70"}`}>{tl.title}</span>
+                  <button
+                    onClick={() => toggleTimelineHidden(tl.id!)}
+                    className={`shrink-0 w-5 h-5 flex items-center justify-center rounded transition-all ${
+                      tl.hidden
+                        ? "text-no-muted hover:text-no-blue hover:bg-no-blue/10"
+                        : "text-no-muted/30 hover:text-no-muted hover:bg-no-border opacity-0 group-hover:opacity-100"
+                    }`}
+                    title={tl.hidden ? "Show timeline" : "Hide timeline"}
+                  >
+                    {tl.hidden ? <EyeOff size={11} /> : <Eye size={11} />}
+                  </button>
                   <button
                     onClick={() => startEdit(tl.id!, tl.title)}
                     className="shrink-0 w-5 h-5 flex items-center justify-center rounded text-no-muted/40 hover:text-no-blue hover:bg-no-blue/10 opacity-0 group-hover:opacity-100 transition-all"
