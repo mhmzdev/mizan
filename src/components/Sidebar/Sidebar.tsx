@@ -17,6 +17,7 @@ export function Sidebar() {
   const addTimeline    = useNotesStore((s) => s.addTimeline);
   const renameTimeline = useNotesStore((s) => s.renameTimeline);
   const deleteTimeline = useNotesStore((s) => s.deleteTimeline);
+  const closeDrawer    = useNotesStore((s) => s.closeDrawer);
 
   const [jumpInput,          setJumpInput]          = useState("");
   const [showAddForm,        setShowAddForm]        = useState(false);
@@ -55,8 +56,9 @@ export function Sidebar() {
       if (container) container.scrollLeft = newScrollLeft;
 
       setJumpInput("");
+      closeDrawer();
     },
-    [jumpInput]
+    [jumpInput, closeDrawer]
   );
 
   const handleAddTimeline = useCallback(
@@ -102,7 +104,7 @@ export function Sidebar() {
   const canAdd = timelines.length < MAX_TIMELINES;
 
   return (
-    <aside className="w-52 bg-no-panel border-l border-no-border flex flex-col p-4 gap-5 shrink-0 overflow-y-auto">
+    <aside className="w-full h-full bg-no-panel border-l border-no-border flex flex-col p-4 gap-5 overflow-y-auto panel-scroll">
       {/* Center year */}
       <div className="text-center">
         <div className="text-no-muted text-[10px] uppercase tracking-[0.15em] mb-1.5 font-medium">

@@ -410,7 +410,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
 
       {mouse !== null && hoveredYear !== null && (
         <div
-          className="absolute top-0 bottom-0 pointer-events-none z-50"
+          className="absolute top-0 bottom-0 pointer-events-none z-[45]"
           style={{ left: mouse.x }}
         >
           <div className="w-px h-full bg-no-blue/30" />

@@ -42,17 +42,19 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
     }
   }
 
+  const color = getTimelineColor(timelineIndex);
+
   return (
     <div
       data-timeline-id={timeline.id}
       className="relative w-full border-b border-no-border flex-1 transition-colors duration-300"
-      style={isActive ? { background: "rgba(116,160,255,0.04)" } : undefined}
+      style={isActive ? { background: `${color}0A` } : undefined}
     >
-      {/* Left accent stripe — glows when track is active */}
+      {/* Left accent stripe — glows with timeline color when active */}
       <div
         className="absolute left-0 top-0 bottom-0 w-0.5 transition-all duration-300"
         style={isActive
-          ? { background: "rgba(116,160,255,0.55)", boxShadow: "2px 0 12px rgba(116,160,255,0.25)" }
+          ? { background: `${color}8C`, boxShadow: `2px 0 12px ${color}40` }
           : { background: "transparent" }
         }
       />
@@ -60,7 +62,7 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
       {/* Track label */}
       <div
         className="sticky top-10 left-3 text-[10px] uppercase tracking-[0.15em] z-10 pointer-events-none select-none inline-block font-semibold transition-colors duration-300"
-        style={{ color: isActive ? "rgba(116,160,255,0.85)" : "rgba(108,115,128,0.65)" }}
+        style={{ color: isActive ? `${color}D9` : "rgba(108,115,128,0.65)" }}
       >
         {timeline.title}
       </div>
@@ -71,6 +73,8 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
           year={year}
           pxPerYear={pxPerYear}
           offsetPx={(year - YEAR_START) * pxPerYear}
+          isActive={isActive}
+          tickColor={color}
         />
       ))}
 
@@ -80,11 +84,10 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
 
       {(() => {
         const yearCount = new Map<number, number>();
-        const dotColor  = getTimelineColor(timelineIndex);
         return notes.map((note) => {
           const idx = yearCount.get(note.year) ?? 0;
           yearCount.set(note.year, idx + 1);
-          return <NoteDot key={note.id} note={note} pxPerYear={pxPerYear} stackIndex={idx} color={dotColor} />;
+          return <NoteDot key={note.id} note={note} pxPerYear={pxPerYear} stackIndex={idx} color={color} />;
         });
       })()}
     </div>

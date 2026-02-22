@@ -7,13 +7,27 @@ interface YearBlockProps {
   year: number;
   pxPerYear: number;
   offsetPx: number;
+  isActive?: boolean;
+  tickColor?: string;
 }
 
-function YearBlockInner({ year, pxPerYear, offsetPx }: YearBlockProps) {
+function YearBlockInner({ year, pxPerYear, offsetPx, isActive, tickColor }: YearBlockProps) {
   const labelInterval = getLabelIntervalFromPx(pxPerYear);
   const isLabel      = year % labelInterval === 0;
   const tickHeight   = isLabel ? 14 : 6;
   const fontSize     = pxPerYear >= 100 ? 12 : pxPerYear >= 10 ? 11 : 10;
+
+  const tickStyle = isActive && tickColor
+    ? {
+        width: 1,
+        height: tickHeight,
+        opacity: isLabel ? 0.9 : 0.55,
+        background: tickColor,
+        boxShadow: isLabel
+          ? `0 0 6px 2px ${tickColor}66`
+          : `0 0 4px 1px ${tickColor}44`,
+      }
+    : { width: 1, height: tickHeight, opacity: isLabel ? 0.7 : 0.35 };
 
   return (
     <div
@@ -22,15 +36,19 @@ function YearBlockInner({ year, pxPerYear, offsetPx }: YearBlockProps) {
     >
       {/* Tick mark */}
       <div
-        className="bg-no-border"
-        style={{ width: 1, height: tickHeight, opacity: isLabel ? 0.7 : 0.35 }}
+        className={isActive && tickColor ? undefined : "bg-no-border"}
+        style={tickStyle}
       />
 
       {/* Year label */}
       {isLabel && (
         <span
-          className="text-no-muted/70 select-none whitespace-nowrap font-mono"
-          style={{ fontSize, marginTop: 3 }}
+          className="select-none whitespace-nowrap font-mono"
+          style={{
+            fontSize,
+            marginTop: 3,
+            color: isActive && tickColor ? `${tickColor}CC` : undefined,
+          }}
         >
           {formatYear(year)}
         </span>

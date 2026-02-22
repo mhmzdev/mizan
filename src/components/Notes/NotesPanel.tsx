@@ -23,7 +23,7 @@ export function NotesPanel() {
     : notes;
 
   return (
-    <aside className="w-52 bg-no-panel border-r border-no-border flex flex-col shrink-0">
+    <aside className="w-full h-full bg-no-panel border-r border-no-border flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-no-border shrink-0">
         <span className="text-no-muted text-[10px] uppercase tracking-[0.15em] font-semibold">
