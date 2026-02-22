@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link2, Check, ChevronLeft, ChevronRight, StickyNote, Layers } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { TimelineContainer } from "@/components/Timeline/TimelineContainer";
@@ -14,16 +14,23 @@ import { useUrlSync } from "@/hooks/useUrlSync";
 import { MAX_PX_PER_YEAR } from "@/utils/constants";
 import { TimelineEvent } from "@/types";
 
-const PANEL_W = 208; // w-52 = 13rem = 208 px
+const MIN_PANEL_W = 208; // minimum / default panel width
+const MAX_PANEL_W = 400; // maximum panel width
 const PANEL_T = { type: "tween" as const, duration: 0.22, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] };
+const INSTANT   = { duration: 0 } as const;
 
 export default function Home() {
   const [events,      setEvents]      = useState<TimelineEvent[]>([]);
   const [viewCopied,  setViewCopied]  = useState(false);
 
   // Panel open/close (desktop/tablet)
-  const [notesOpen,   setNotesOpen]   = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [notesOpen,    setNotesOpen]   = useState(true);
+  const [sidebarOpen,  setSidebarOpen] = useState(true);
+
+  // Panel widths — resizable between MIN_PANEL_W and MAX_PANEL_W
+  const [notesWidth,   setNotesWidth]   = useState(MIN_PANEL_W);
+  const [sidebarWidth, setSidebarWidth] = useState(MIN_PANEL_W);
+  const isResizingRef = useRef(false);
 
   // Mobile state
   const [isMobile,    setIsMobile]    = useState(false);
@@ -66,6 +73,11 @@ export default function Home() {
     if (no !== null) setNotesOpen(no !== "false");
     if (so !== null) setSidebarOpen(so !== "false");
 
+    const nw = localStorage.getItem("mizan_notes_width");
+    const sw = localStorage.getItem("mizan_sidebar_width");
+    if (nw !== null) setNotesWidth(Math.max(MIN_PANEL_W, Math.min(MAX_PANEL_W, parseInt(nw))));
+    if (sw !== null) setSidebarWidth(Math.max(MIN_PANEL_W, Math.min(MAX_PANEL_W, parseInt(sw))));
+
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);
@@ -87,6 +99,50 @@ export default function Home() {
       return next;
     });
   }, []);
+
+  function startResizeNotes(e: React.MouseEvent) {
+    e.preventDefault();
+    isResizingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    const startX = e.clientX;
+    const startW = notesWidth;
+    function onMove(ev: MouseEvent) {
+      setNotesWidth(Math.max(MIN_PANEL_W, Math.min(MAX_PANEL_W, startW + ev.clientX - startX)));
+    }
+    function onUp(ev: MouseEvent) {
+      const w = Math.max(MIN_PANEL_W, Math.min(MAX_PANEL_W, startW + ev.clientX - startX));
+      setNotesWidth(w);
+      localStorage.setItem("mizan_notes_width", String(w));
+      isResizingRef.current = false;
+      document.body.style.cursor = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
+  function startResizeSidebar(e: React.MouseEvent) {
+    e.preventDefault();
+    isResizingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    const startX = e.clientX;
+    const startW = sidebarWidth;
+    function onMove(ev: MouseEvent) {
+      setSidebarWidth(Math.max(MIN_PANEL_W, Math.min(MAX_PANEL_W, startW - (ev.clientX - startX))));
+    }
+    function onUp(ev: MouseEvent) {
+      const w = Math.max(MIN_PANEL_W, Math.min(MAX_PANEL_W, startW - (ev.clientX - startX)));
+      setSidebarWidth(w);
+      localStorage.setItem("mizan_sidebar_width", String(w));
+      isResizingRef.current = false;
+      document.body.style.cursor = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
 
   const eventsByYear = useMemo(() => {
     const map = new Map<number, TimelineEvent[]>();
@@ -128,8 +184,10 @@ export default function Home() {
     if (drawerOpen && isMobile) setMobileSheet(null);
   }, [drawerOpen, isMobile]);
 
-  // NoteDrawer left offset tracks the notes panel width
-  const notesPanelWidth = isMobile ? 0 : (notesOpen ? PANEL_W : 0);
+  // NoteDrawer left offset tracks the notes panel width (instant during resize)
+  const notesPanelWidth = isMobile ? 0 : (notesOpen ? notesWidth : 0);
+  // Read ref at render time — safe because setWidth triggers re-renders
+  const panelT = isResizingRef.current ? INSTANT : PANEL_T;
 
   return (
     <div className="h-screen flex flex-col bg-no-bg">
@@ -154,21 +212,32 @@ export default function Home() {
         {/* Left notes panel — desktop/tablet only */}
         {!isMobile && (
           <motion.div
-            animate={{ width: notesOpen ? PANEL_W : 0 }}
-            transition={PANEL_T}
+            animate={{ width: notesOpen ? notesWidth : 0 }}
+            transition={panelT}
             className="overflow-hidden shrink-0 h-full z-10"
           >
-            <div style={{ width: PANEL_W }} className="h-full">
+            <div style={{ width: notesWidth }} className="h-full">
               <NotesPanel />
             </div>
           </motion.div>
         )}
 
+        {/* Notes resize handle — drag to widen/narrow */}
+        {!isMobile && notesOpen && (
+          <div
+            className="absolute top-0 bottom-0 z-[25] cursor-col-resize select-none group"
+            style={{ left: notesWidth - 5, width: 10 }}
+            onMouseDown={startResizeNotes}
+          >
+            <div className="absolute inset-y-0 left-[4px] w-px bg-no-blue/0 group-hover:bg-no-blue/50 transition-colors duration-150" />
+          </div>
+        )}
+
         {/* Notes collapse/expand tab */}
         {!isMobile && (
           <motion.button
-            animate={{ left: notesOpen ? PANEL_W : 0 }}
-            transition={PANEL_T}
+            animate={{ left: notesOpen ? notesWidth : 0 }}
+            transition={panelT}
             onClick={toggleNotes}
             title={notesOpen ? "Collapse notes" : "Expand notes"}
             className="absolute z-30 top-1/2 -translate-y-1/2 h-10 w-[18px] bg-no-panel
@@ -184,7 +253,7 @@ export default function Home() {
         )}
 
         {/* Note drawer — always present, left follows notes panel */}
-        <NoteDrawer panelWidth={notesPanelWidth} isMobile={isMobile} />
+        <NoteDrawer panelWidth={notesPanelWidth} isMobile={isMobile} instantLeft={isResizingRef.current} />
 
         {/* Timeline — takes all remaining space */}
         <TimelineContainer eventsByYear={eventsByYear} />
@@ -192,8 +261,8 @@ export default function Home() {
         {/* Sidebar collapse/expand tab */}
         {!isMobile && (
           <motion.button
-            animate={{ right: sidebarOpen ? PANEL_W : 0 }}
-            transition={PANEL_T}
+            animate={{ right: sidebarOpen ? sidebarWidth : 0 }}
+            transition={panelT}
             onClick={toggleSidebar}
             title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
             className="absolute z-30 top-1/2 -translate-y-1/2 h-10 w-[18px] bg-no-panel
@@ -208,14 +277,25 @@ export default function Home() {
           </motion.button>
         )}
 
+        {/* Sidebar resize handle — drag to widen/narrow */}
+        {!isMobile && sidebarOpen && (
+          <div
+            className="absolute top-0 bottom-0 z-[25] cursor-col-resize select-none group"
+            style={{ right: sidebarWidth - 5, width: 10 }}
+            onMouseDown={startResizeSidebar}
+          >
+            <div className="absolute inset-y-0 right-[4px] w-px bg-no-blue/0 group-hover:bg-no-blue/50 transition-colors duration-150" />
+          </div>
+        )}
+
         {/* Right sidebar — desktop/tablet only */}
         {!isMobile && (
           <motion.div
-            animate={{ width: sidebarOpen ? PANEL_W : 0 }}
-            transition={PANEL_T}
+            animate={{ width: sidebarOpen ? sidebarWidth : 0 }}
+            transition={panelT}
             className="overflow-hidden shrink-0 h-full z-10"
           >
-            <div style={{ width: PANEL_W }} className="h-full">
+            <div style={{ width: sidebarWidth }} className="h-full">
               <Sidebar />
             </div>
           </motion.div>

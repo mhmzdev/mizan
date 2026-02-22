@@ -37,9 +37,10 @@ const labelClass = "text-no-muted text-[10px] uppercase tracking-[0.12em] font-m
 interface NoteDrawerProps {
   panelWidth: number;
   isMobile?: boolean;
+  instantLeft?: boolean; // skip left animation during panel resize
 }
 
-export function NoteDrawer({ panelWidth, isMobile }: NoteDrawerProps) {
+export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProps) {
   const drawerOpen        = useNotesStore((s) => s.drawerOpen);
   const editingNoteId     = useNotesStore((s) => s.editingNoteId);
   const selectedYear      = useNotesStore((s) => s.selectedYear);
@@ -255,7 +256,7 @@ export function NoteDrawer({ panelWidth, isMobile }: NoteDrawerProps) {
             transition={{
               x:       { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
               opacity: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
-              left:    { type: "tween", duration: 0.22, ease: [0.4, 0, 0.2, 1] },
+              left:    instantLeft ? { duration: 0 } : { type: "tween", duration: 0.22, ease: [0.4, 0, 0.2, 1] },
             }}
             className="absolute top-0 bottom-0 w-80 bg-[#1A1C1E]/80 backdrop-blur-md border-r border-no-border/60 flex flex-col z-[55] shadow-[4px_0_40px_rgba(0,0,0,0.6)] supports-[backdrop-filter]:bg-[#1A1C1E]/75"
             onClick={(e) => e.stopPropagation()}
