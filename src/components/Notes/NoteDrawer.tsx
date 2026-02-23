@@ -69,6 +69,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
   const [timelineId,     setTimelineId]    = useState<number>(lastTimelineId);
   const [linkCopied,     setLinkCopied]    = useState(false);
   const [sourceEventId,  setSourceEventId] = useState<string | null>(null);
+  const [formKey,        setFormKey]       = useState(0);
 
   const isEventAnnotation = sourceEventId !== null;
 
@@ -98,6 +99,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
 
   useEffect(() => {
     if (!drawerOpen) return;
+    setFormKey((k) => k + 1); // force MarkdownEditor remount with correct content
     let resolvedTimelineId = lastTimelineId;
     if (editingNoteId !== null) {
       const note = notes.find((n) => n.id === editingNoteId);
@@ -323,7 +325,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
               {isEventAnnotation ? "Your notes" : "Markdown supported"}
             </span>
           </div>
-          <MarkdownEditor key={editingNoteId ?? "new"} value={content} onChange={setContent} />
+          <MarkdownEditor key={formKey} value={content} onChange={setContent} />
         </div>
       </div>
 

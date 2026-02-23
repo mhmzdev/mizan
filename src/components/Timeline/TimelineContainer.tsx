@@ -38,9 +38,11 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
   const wrapperRef   = useRef<HTMLDivElement>(null);
 
   // Sidebar animation refs
-  const isSettingScroll = useRef(false);
-  const isAnimatingRef  = useRef(false);
-  const animFrameRef    = useRef<number | null>(null);
+  const isSettingScroll  = useRef(false);
+  const isAnimatingRef   = useRef(false);
+  const animFrameRef     = useRef<number | null>(null);
+  // Deferred scroll set — applied in useLayoutEffect after content width updates
+  const pendingScrollRef = useRef<number | null>(null);
 
   // Wheel-zoom momentum refs (log-space lerp)
   const targetLogPxRef  = useRef(Math.log(PX_PER_YEAR.centuries));
@@ -133,6 +135,16 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // After React re-renders with a new pxPerYear (new content width), apply any deferred scroll.
+  // This avoids the browser clamping scrollLeft to the old (smaller) content width.
+  useLayoutEffect(() => {
+    if (pendingScrollRef.current === null || !containerRef.current) return;
+    isSettingScroll.current = true;
+    containerRef.current.scrollLeft = pendingScrollRef.current;
+    pendingScrollRef.current = null;
+    requestAnimationFrame(() => { isSettingScroll.current = false; });
+  }, [pxPerYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Resize observer
   useEffect(() => {
     if (!containerRef.current) return;
@@ -169,9 +181,10 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     currentLogPxRef.current = Math.log(startZoom);
     targetLogPxRef.current  = Math.log(startZoom);
 
-    isSettingScroll.current = true;
-    containerRef.current.scrollLeft = startScroll;
-    requestAnimationFrame(() => { isSettingScroll.current = false; });
+    // Defer the DOM scroll write until after React commits the new content width.
+    // Setting scrollLeft synchronously here would be clamped by the browser to the
+    // old (smaller) content width, leaving the store and DOM out of sync.
+    pendingScrollRef.current = startScroll;
 
     useTimelineStore.setState({
       pxPerYear:  startZoom,
