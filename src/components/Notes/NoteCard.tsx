@@ -40,14 +40,19 @@ export function NoteCard({ note }: NoteCardProps) {
       <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: timelineColor }} />
       <div className="flex items-center justify-between gap-1 mb-1.5">
         <span className="text-no-gold/80 text-[12px] font-mono">{fmt(note.year)}</span>
-        {timelineName && (
-          <span
-            className="text-[9px] uppercase tracking-wide truncate max-w-[80px] font-medium"
-            style={{ color: alphaColor(timelineColor, 70) }}
-          >
-            {timelineName}
-          </span>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {note.linkedNoteId && (
+            <span className="text-[9px] text-no-blue/70 font-mono" title="Linked note">↔</span>
+          )}
+          {timelineName && (
+            <span
+              className="text-[9px] uppercase tracking-wide truncate max-w-[80px] font-medium"
+              style={{ color: alphaColor(timelineColor, 70) }}
+            >
+              {timelineName}
+            </span>
+          )}
+        </div>
       </div>
       <div className="text-no-text/90 text-xs font-medium leading-snug truncate">{note.title}</div>
       {note.content && (

@@ -66,9 +66,10 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
   const setScrollLeft   = useTimelineStore((s) => s.setScrollLeft);
   const setViewportWidth = useTimelineStore((s) => s.setViewportWidth);
 
-  const rangeStart = useTimelineStore((s) => s.rangeStart);
-  const rangeEnd   = useTimelineStore((s) => s.rangeEnd);
-  const rangeActive = rangeStart !== null && rangeEnd !== null;
+  const rangeStart     = useTimelineStore((s) => s.rangeStart);
+  const rangeEnd       = useTimelineStore((s) => s.rangeEnd);
+  const rangeActive    = rangeStart !== null && rangeEnd !== null;
+  const activeInterval = useTimelineStore((s) => s.activeInterval);
 
   const mode = getModeFromPxPerYear(pxPerYear);
   const totalWidth = pxPerYear * TOTAL_YEARS;
@@ -587,6 +588,44 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
               End of timeline
             </div>
           </div>
+
+          {/* ── Active-interval overlay (linked note pair) ─────────────── */}
+          {activeInterval !== null && (() => {
+            const startPx = (activeInterval.start - YEAR_START) * pxPerYear;
+            const endPx   = (activeInterval.end   - YEAR_START + 1) * pxPerYear;
+            return (
+              <>
+                {startPx > 0 && (
+                  <div
+                    className="absolute top-0 bottom-0 left-0 pointer-events-none z-[21]"
+                    style={{ width: startPx, background: "var(--range-overlay)" }}
+                  />
+                )}
+                {endPx < totalWidth && (
+                  <div
+                    className="absolute top-0 bottom-0 pointer-events-none z-[21]"
+                    style={{ left: endPx, right: 0, background: "var(--range-overlay)" }}
+                  />
+                )}
+                <div
+                  className="absolute top-0 bottom-0 w-[2px] pointer-events-none z-[22]"
+                  style={{
+                    left: startPx,
+                    background: "var(--range-line)",
+                    boxShadow: `2px 0 10px var(--range-glow)`,
+                  }}
+                />
+                <div
+                  className="absolute top-0 bottom-0 w-[2px] pointer-events-none z-[22]"
+                  style={{
+                    left: endPx,
+                    background: "var(--range-line)",
+                    boxShadow: `-2px 0 10px var(--range-glow)`,
+                  }}
+                />
+              </>
+            );
+          })()}
 
           {/* ── Date-range overlays ────────────────────────────────────── */}
           {rangeActive && (() => {

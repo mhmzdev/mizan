@@ -20,6 +20,8 @@ export interface Note {
   content: string;
   /** Set when this note annotates a global event — hides that event dot on the timeline. */
   sourceEventId?: string;
+  /** ID of the other note this note is linked to (bidirectional). */
+  linkedNoteId?: number;
   createdAt: number;
   updatedAt: number;
 }

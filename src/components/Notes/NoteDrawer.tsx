@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { X, Link, Check, ChevronDown, Trash2, Lock } from "lucide-react";
+import { X, Link, Check, ChevronDown, Trash2, Lock, Link2, Link2Off, ArrowRight, AlertTriangle, Search } from "lucide-react";
 import { getTimelineColor } from "@/utils/timelineColors";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNotesStore } from "@/stores/notesStore";
@@ -72,6 +72,9 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
   const saveNote          = useNotesStore((s) => s.saveNote);
   const updateNote        = useNotesStore((s) => s.updateNote);
   const deleteNote        = useNotesStore((s) => s.deleteNote);
+  const linkNotes         = useNotesStore((s) => s.linkNotes);
+  const unlinkNotes       = useNotesStore((s) => s.unlinkNotes);
+  const clearBrokenLink   = useNotesStore((s) => s.clearBrokenLink);
   const setLastTimelineId    = useNotesStore((s) => s.setLastTimelineId);
   const setDrawerTimelineId  = useNotesStore((s) => s.setDrawerTimelineId);
 
@@ -83,6 +86,8 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
   const [linkCopied,     setLinkCopied]    = useState(false);
   const [sourceEventId,  setSourceEventId] = useState<string | null>(null);
   const [formKey,        setFormKey]       = useState(0);
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [linkSearch,     setLinkSearch]    = useState("");
 
   const isEventAnnotation = sourceEventId !== null;
 
@@ -132,6 +137,8 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
       setSourceEventId(pendingSourceEvent?.id ?? null);
     }
     setYearError(false);
+    setLinkPickerOpen(false);
+    setLinkSearch("");
     setDrawerTimelineId(resolvedTimelineId);
   }, [drawerOpen, editingNoteId, pendingTitle, selectedYear, pendingSourceEvent]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -340,6 +347,132 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
           </div>
           <MarkdownEditor key={formKey} value={content} onChange={setContent} />
         </div>
+
+        {/* ── Link section (edit mode only) ── */}
+        {editingNoteId !== null && (() => {
+          const currentNote = notes.find((n) => n.id === editingNoteId);
+          const partnerId   = currentNote?.linkedNoteId;
+
+          if (partnerId) {
+            const partner = notes.find((n) => n.id === partnerId);
+
+            if (partner) {
+              // Linked and partner exists
+              return (
+                <div className="px-4 py-3 border-t border-no-border/50">
+                  <p className={labelClass}>Linked note</p>
+                  <div className="flex items-center gap-2 px-2.5 py-2 bg-no-card rounded-lg border border-no-border">
+                    <span className="text-no-blue/80 text-[12px] shrink-0">↔</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-no-text text-[12px] font-medium truncate">{partner.title}</p>
+                      <p className="text-no-muted/60 text-[11px] font-mono">{fmt(partner.year)}</p>
+                    </div>
+                    <button
+                      onClick={() => { useNotesStore.getState().openDrawer(partner.year, partner.id!); }}
+                      title="Go to linked note"
+                      className="w-6 h-6 flex items-center justify-center rounded text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors shrink-0"
+                    >
+                      <ArrowRight size={12} />
+                    </button>
+                    <button
+                      onClick={() => unlinkNotes(editingNoteId)}
+                      title="Unlink notes"
+                      className="w-6 h-6 flex items-center justify-center rounded text-no-muted hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                    >
+                      <Link2Off size={12} />
+                    </button>
+                  </div>
+                </div>
+              );
+            } else {
+              // Partner was deleted
+              return (
+                <div className="px-4 py-3 border-t border-no-border/50">
+                  <p className={labelClass}>Linked note</p>
+                  <div className="flex items-center gap-2 px-2.5 py-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                    <AlertTriangle size={12} className="text-amber-400 shrink-0" />
+                    <span className="flex-1 text-amber-400/80 text-[12px]">Linked note no longer exists</span>
+                    <button
+                      onClick={() => clearBrokenLink(editingNoteId)}
+                      className="text-amber-400/60 hover:text-amber-400 text-[11px] transition-colors shrink-0"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+          } else if (linkPickerOpen) {
+            // Link picker open
+            const candidates = notes.filter(
+              (n) => n.id !== editingNoteId && !n.linkedNoteId
+            );
+            const q = linkSearch.trim().toLowerCase();
+            const shown = q
+              ? candidates.filter((n) => n.title.toLowerCase().includes(q) || fmt(n.year).toLowerCase().includes(q))
+              : candidates;
+
+            return (
+              <div className="px-4 py-3 border-t border-no-border/50">
+                <div className="flex items-center justify-between mb-2">
+                  <p className={labelClass}>Link to note</p>
+                  <button
+                    onClick={() => { setLinkPickerOpen(false); setLinkSearch(""); }}
+                    className="text-no-muted/50 hover:text-no-muted transition-colors"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+                <div className="relative mb-2">
+                  <Search size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-no-muted/50 pointer-events-none" />
+                  <input
+                    autoFocus
+                    type="text"
+                    value={linkSearch}
+                    onChange={(e) => setLinkSearch(e.target.value)}
+                    placeholder="Search notes…"
+                    className="w-full bg-no-card border border-no-border rounded-lg pl-7 pr-3 py-1.5 text-no-text text-[12px] placeholder:text-no-muted/50 focus:outline-none focus:border-no-blue/40 transition-colors"
+                  />
+                </div>
+                <div className="max-h-[140px] overflow-y-auto panel-scroll flex flex-col gap-0.5">
+                  {shown.length === 0 ? (
+                    <p className="text-no-muted/40 text-[12px] text-center py-2">
+                      {candidates.length === 0 ? "No unlinkable notes available" : "No results"}
+                    </p>
+                  ) : (
+                    shown.map((n) => (
+                      <button
+                        key={n.id}
+                        onClick={async () => {
+                          await linkNotes(editingNoteId, n.id!);
+                          setLinkPickerOpen(false);
+                          setLinkSearch("");
+                        }}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-no-card text-left transition-colors"
+                      >
+                        <span className="text-no-muted/60 text-[11px] font-mono shrink-0 w-[60px] truncate">{fmt(n.year)}</span>
+                        <span className="text-no-text text-[12px] truncate">{n.title}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          } else {
+            // Not linked, picker closed
+            return (
+              <div className="px-4 py-3 border-t border-no-border/50">
+                <button
+                  onClick={() => setLinkPickerOpen(true)}
+                  className="flex items-center gap-1.5 text-no-muted/50 hover:text-no-blue text-[12px] transition-colors"
+                >
+                  <Link2 size={11} />
+                  <span>Link to another note</span>
+                </button>
+              </div>
+            );
+          }
+        })()}
       </div>
 
       {/* Actions */}

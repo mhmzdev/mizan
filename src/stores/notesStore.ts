@@ -1,6 +1,7 @@
 import {create} from "zustand";
 import {Note, Timeline, TimelineEvent} from "@/types";
 import {db} from "@/lib/db";
+import {useTimelineStore} from "@/stores/timelineStore";
 
 const LAST_TIMELINE_KEY = "mizan_last_timeline_id";
 
@@ -47,6 +48,9 @@ interface NotesState {
   saveNote: (data: {timelineId: number; year: number; title: string; content: string; sourceEventId?: string}) => Promise<void>;
   updateNote: (id: number, changes: {timelineId?: number; title?: string; content?: string; year?: number}) => Promise<void>;
   deleteNote: (id: number) => Promise<void>;
+  linkNotes: (noteId: number, partnerId: number) => Promise<void>;
+  unlinkNotes: (noteId: number) => Promise<void>;
+  clearBrokenLink: (noteId: number) => Promise<void>;
 
   /** Re-insert the stashed item back into DB and restore it in state. */
   undoDelete: () => Promise<void>;
@@ -133,6 +137,25 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   setDrawerTimelineId: (id) => set({drawerTimelineId: id}),
 
   openDrawer: (year, noteId, title, sourceEvent) => {
+    // Update active interval overlay if opening a linked note
+    if (noteId !== undefined) {
+      const notes = get().notes;
+      const note = notes.find((n) => n.id === noteId);
+      if (note?.linkedNoteId) {
+        const partner = notes.find((n) => n.id === note.linkedNoteId);
+        if (partner) {
+          const start = Math.min(note.year, partner.year);
+          const end   = Math.max(note.year, partner.year);
+          useTimelineStore.getState().setActiveInterval({ start, end });
+        } else {
+          useTimelineStore.getState().setActiveInterval(null);
+        }
+      } else {
+        useTimelineStore.getState().setActiveInterval(null);
+      }
+    } else {
+      useTimelineStore.getState().setActiveInterval(null);
+    }
     set({
       drawerOpen: true,
       selectedYear: year,
@@ -143,6 +166,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   },
 
   closeDrawer: () => {
+    useTimelineStore.getState().setActiveInterval(null);
     set({drawerOpen: false, editingNoteId: null, drawerTimelineId: null, pendingTitle: "", pendingSourceEvent: null});
   },
 
@@ -192,5 +216,41 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   commitDelete: () => {
     // DB is already clean — just dismiss the toast.
     set({ pendingDelete: null });
+  },
+
+  linkNotes: async (noteId, partnerId) => {
+    const now = Date.now();
+    await db.notes.update(noteId,   { linkedNoteId: partnerId, updatedAt: now });
+    await db.notes.update(partnerId, { linkedNoteId: noteId,    updatedAt: now });
+    const notes = await db.notes.orderBy("year").toArray();
+    set({ notes });
+    const noteA = notes.find((n) => n.id === noteId);
+    const noteB = notes.find((n) => n.id === partnerId);
+    if (noteA && noteB) {
+      useTimelineStore.getState().setActiveInterval({
+        start: Math.min(noteA.year, noteB.year),
+        end:   Math.max(noteA.year, noteB.year),
+      });
+    }
+  },
+
+  unlinkNotes: async (noteId) => {
+    const note = get().notes.find((n) => n.id === noteId);
+    if (!note?.linkedNoteId) return;
+    const partnerId = note.linkedNoteId;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await db.notes.where("id").equals(noteId)    .modify((obj: any) => { delete obj.linkedNoteId; });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await db.notes.where("id").equals(partnerId) .modify((obj: any) => { delete obj.linkedNoteId; });
+    const notes = await db.notes.orderBy("year").toArray();
+    set({ notes });
+    useTimelineStore.getState().setActiveInterval(null);
+  },
+
+  clearBrokenLink: async (noteId) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await db.notes.where("id").equals(noteId).modify((obj: any) => { delete obj.linkedNoteId; });
+    const notes = await db.notes.orderBy("year").toArray();
+    set({ notes });
   },
 }));

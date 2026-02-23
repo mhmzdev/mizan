@@ -12,6 +12,8 @@ interface TimelineState {
   /** Active date-range filter — null when no range is set. */
   rangeStart: number | null;
   rangeEnd:   number | null;
+  /** Active interval overlay from a linked note pair — null when no linked note is open. */
+  activeInterval: { start: number; end: number } | null;
 
   setPxPerYear: (pxPerYear: number) => void;
   setScrollLeft: (scrollLeft: number) => void;
@@ -20,6 +22,7 @@ interface TimelineState {
   setPendingNav: (nav: { year: number; zoom: number } | null) => void;
   setRange: (start: number, end: number) => void;
   clearRange: () => void;
+  setActiveInterval: (interval: { start: number; end: number } | null) => void;
 }
 
 export const useTimelineStore = create<TimelineState>((set, get) => ({
@@ -31,6 +34,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   pendingNav: null,
   rangeStart: null,
   rangeEnd:   null,
+  activeInterval: null,
 
   /** Zoom to a new pxPerYear, keeping the current centerYear pinned. */
   setPxPerYear: (newPx: number) => {
@@ -60,4 +64,5 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
   setRange: (start, end) => set({ rangeStart: start, rangeEnd: end }),
   clearRange: () => set({ rangeStart: null, rangeEnd: null }),
+  setActiveInterval: (interval) => set({ activeInterval: interval }),
 }));
