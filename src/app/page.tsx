@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { MizanLogo } from "@/components/ui/MizanLogo";
 import { TourOverlay } from "@/components/Tour/TourOverlay";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { useTourStore } from "@/stores/tourStore";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
@@ -27,6 +28,8 @@ const INSTANT   = { duration: 0 } as const;
 export default function Home() {
   const [events,      setEvents]      = useState<TimelineEvent[]>([]);
   const [viewCopied,  setViewCopied]  = useState(false);
+  const [isLoading,   setIsLoading]   = useState(true);
+  const loadedRef = useRef({ events: false, db: false, startTime: Date.now() });
 
   // Panel open/close (desktop/tablet)
   const [notesOpen,    setNotesOpen]   = useState(true);
@@ -54,16 +57,29 @@ export default function Home() {
   useUrlSync();
   const { theme, toggleTheme } = useTheme();
 
+  // Dismiss loading screen once both events + DB are ready (min 700 ms for polish)
+  const checkAllLoaded = useCallback(() => {
+    const s = loadedRef.current;
+    if (!s.events || !s.db) return;
+    const elapsed   = Date.now() - s.startTime;
+    const remaining = Math.max(0, 700 - elapsed);
+    setTimeout(() => setIsLoading(false), remaining);
+  }, []);
+
   // Load events chunk
   useEffect(() => {
     import("@/data/events.json").then((mod) => {
       setEvents(mod.default as TimelineEvent[]);
+      loadedRef.current.events = true;
+      checkAllLoaded();
     });
-  }, []);
+  }, [checkAllLoaded]);
 
   // Load DB + handle ?note= deep link
   useEffect(() => {
     Promise.all([loadTimelines(), loadNotes()]).then(() => {
+      loadedRef.current.db = true;
+      checkAllLoaded();
       if (typeof window === "undefined") return;
       const noteIdStr = new URLSearchParams(window.location.search).get("note");
       if (!noteIdStr) return;
@@ -74,7 +90,7 @@ export default function Home() {
       useNotesStore.getState().openDrawer(note.year, note.id);
       useTimelineStore.getState().setPendingNav({ year: note.year, zoom: MAX_PX_PER_YEAR });
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [checkAllLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Restore panel prefs from localStorage + mobile detection
   useEffect(() => {
@@ -421,6 +437,11 @@ export default function Home() {
       <ConfirmDialog />
       <UndoToast />
       <TourOverlay />
+
+      {/* Loading screen — sits on top of everything, fades out once ready */}
+      <AnimatePresence>
+        {isLoading && <LoadingScreen key="loading" />}
+      </AnimatePresence>
     </div>
   );
 }
