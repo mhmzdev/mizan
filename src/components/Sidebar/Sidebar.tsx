@@ -161,18 +161,16 @@ export function Sidebar() {
   const canAdd = timelines.length < MAX_TIMELINES;
 
   return (
-    <aside data-tour="tour-sidebar" className="w-full h-full bg-no-panel border-l border-no-border flex flex-col p-4 gap-5 overflow-y-auto panel-scroll">
+    <aside data-tour="tour-sidebar" className="w-full h-full bg-no-panel border-l border-no-border flex flex-col p-4 gap-4 overflow-y-auto panel-scroll">
       {/* Center year */}
       <div className="text-center">
-        <div className="text-no-muted text-[12px] uppercase tracking-[0.15em] mb-1.5 font-medium">
+        <div className="text-no-muted text-[12px] uppercase tracking-[0.15em] mb-1 font-medium">
           Center
         </div>
         <div className="text-no-text text-2xl font-mono font-semibold tracking-tight">
           {formatYear(centerYear)}
         </div>
       </div>
-
-      <div className="h-px bg-no-border" />
 
       {/* Jump to year */}
       <div>

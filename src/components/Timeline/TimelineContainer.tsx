@@ -13,6 +13,7 @@ import { useNotesStore } from "@/stores/notesStore";
 import { getVisibleRangeFromPx } from "@/utils/virtualization";
 import { pxToYearContinuous, formatYear, getModeFromPxPerYear } from "@/utils/yearUtils";
 import { PX_PER_YEAR, YEAR_START, YEAR_END, TOTAL_YEARS, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR } from "@/utils/constants";
+import { getTimelineColor, alphaColor } from "@/utils/timelineColors";
 import { TimelineTrack } from "./TimelineTrack";
 import { TimelineEvent, Note } from "@/types";
 
@@ -51,6 +52,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
+  const [hoveredTimelineIndex, setHoveredTimelineIndex] = useState<number>(-1);
 
   const pxPerYear       = useTimelineStore((s) => s.pxPerYear);
   const targetPxPerYear = useTimelineStore((s) => s.targetPxPerYear);
@@ -468,11 +470,26 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     setMouse(pos);
     mouseRef.current = pos;
+
+    // Find which timeline track the cursor is over
+    let el = e.target as HTMLElement | null;
+    let idx = -1;
+    while (el && el !== e.currentTarget) {
+      if (el.dataset.timelineId) {
+        const id = parseInt(el.dataset.timelineId, 10);
+        const tls = useNotesStore.getState().timelines;
+        idx = tls.findIndex((tl) => tl.id === id);
+        break;
+      }
+      el = el.parentElement;
+    }
+    setHoveredTimelineIndex(idx);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
     setMouse(null);
     mouseRef.current = null;
+    setHoveredTimelineIndex(-1);
   }, []);
 
   /**
@@ -513,6 +530,10 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
     mouse !== null && viewportWidth > 0 && mouse.x > viewportWidth - 120
       ? -108
       : 8;
+
+  const cursorColor = hoveredTimelineIndex >= 0
+    ? getTimelineColor(hoveredTimelineIndex)
+    : "var(--color-no-blue)";
 
   return (
     <div
@@ -617,14 +638,19 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
           className="absolute top-0 bottom-0 pointer-events-none z-[45]"
           style={{ left: mouse.x }}
         >
-          <div className="w-px h-full bg-no-blue/30" />
+          <div className="w-px h-full" style={{ backgroundColor: alphaColor(cursorColor, 30) }} />
           <div
-            className="absolute -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-no-blue"
-            style={{ top: mouse.y, left: 0.5, boxShadow: "0 0 10px 3px var(--range-glow)" }}
+            className="absolute -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full"
+            style={{
+              top: mouse.y,
+              left: 0.5,
+              backgroundColor: cursorColor,
+              boxShadow: `0 0 10px 3px ${alphaColor(cursorColor, 40)}`,
+            }}
           />
           <div
-            className="absolute -translate-y-1/2 bg-no-panel/90 px-2 py-0.5 rounded-md text-no-blue text-xs font-mono whitespace-nowrap"
-            style={{ top: mouse.y, left: labelOffsetX }}
+            className="absolute -translate-y-1/2 bg-no-panel/90 px-2 py-0.5 rounded-md text-xs font-mono whitespace-nowrap"
+            style={{ top: mouse.y, left: labelOffsetX, color: cursorColor }}
           >
             {formatYear(hoveredYear)}
           </div>

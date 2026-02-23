@@ -8,9 +8,14 @@ import { formatYear } from "@/utils/yearUtils";
 import { useNotesStore } from "@/stores/notesStore";
 import { ACTIVE_DOT_COLOR, alphaColor } from "@/utils/timelineColors";
 
-const DOT_SIZE  = 10;
 const DOT_GAP   = 4;
 const STACK_TOP = 40;
+
+function getDotPx(pxPerYear: number): number {
+  if (pxPerYear >= 100) return 10;
+  if (pxPerYear >= 15)  return 6;
+  return 4;
+}
 
 interface NoteDotProps {
   note: Note;
@@ -28,8 +33,11 @@ export function NoteDot({ note, pxPerYear, stackIndex, color }: NoteDotProps) {
 
   const isActive = drawerOpen && note.id === editingNoteId;
 
+  const dotPx    = getDotPx(pxPerYear);
+  const activePx = dotPx + 4;
+
   const left = (note.year - YEAR_START) * pxPerYear + pxPerYear / 2;
-  const top  = STACK_TOP + stackIndex * (DOT_SIZE + DOT_GAP);
+  const top  = STACK_TOP + stackIndex * (dotPx + DOT_GAP);
 
   const dotColor      = isActive ? ACTIVE_DOT_COLOR : color;
   const inactiveGlow  = `0 0 8px 2px ${alphaColor(color, 30)}`;
@@ -46,12 +54,10 @@ export function NoteDot({ note, pxPerYear, stackIndex, color }: NoteDotProps) {
           openDrawer(note.year, note.id);
         }}
         title={note.title}
-        className={`relative block rounded-full cursor-pointer transition-[width,height] duration-200 ${
-          isActive
-            ? "w-3.5 h-3.5 dot-pulse"
-            : "w-2.5 h-2.5 hover:scale-150"
-        }`}
+        className={`relative block rounded-full cursor-pointer transition-[width,height,transform] duration-200 ${isActive ? "dot-pulse" : "hover:scale-150"}`}
         style={{
+          width:  isActive ? activePx : dotPx,
+          height: isActive ? activePx : dotPx,
           backgroundColor: dotColor,
           boxShadow: isActive ? undefined : inactiveGlow,
         }}

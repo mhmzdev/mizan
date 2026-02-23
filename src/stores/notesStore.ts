@@ -1,5 +1,5 @@
 import {create} from "zustand";
-import {Note, Timeline} from "@/types";
+import {Note, Timeline, TimelineEvent} from "@/types";
 import {db} from "@/lib/db";
 
 const LAST_TIMELINE_KEY = "mizan_last_timeline_id";
@@ -25,6 +25,8 @@ interface NotesState {
   selectedYear: number;
   /** Pre-filled title when opening the drawer from a global event dot. */
   pendingTitle: string;
+  /** Full event object when opening from a global event — triggers annotation mode. */
+  pendingSourceEvent: TimelineEvent | null;
   lastTimelineId: number;
   /** The timeline currently selected inside the open drawer — used to highlight the track. */
   drawerTimelineId: number | null;
@@ -40,9 +42,9 @@ interface NotesState {
   setLastTimelineId: (id: number) => void;
   setDrawerTimelineId: (id: number | null) => void;
 
-  openDrawer: (year: number, noteId?: number, title?: string) => void;
+  openDrawer: (year: number, noteId?: number, title?: string, sourceEvent?: TimelineEvent) => void;
   closeDrawer: () => void;
-  saveNote: (data: {timelineId: number; year: number; title: string; content: string}) => Promise<void>;
+  saveNote: (data: {timelineId: number; year: number; title: string; content: string; sourceEventId?: string}) => Promise<void>;
   updateNote: (id: number, changes: {timelineId?: number; title?: string; content?: string; year?: number}) => Promise<void>;
   deleteNote: (id: number) => Promise<void>;
 
@@ -59,6 +61,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   editingNoteId: null,
   selectedYear: 0,
   pendingTitle: "",
+  pendingSourceEvent: null,
   lastTimelineId: readLastTimelineId(),
   drawerTimelineId: null,
   pendingDelete: null,
@@ -129,12 +132,18 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   setDrawerTimelineId: (id) => set({drawerTimelineId: id}),
 
-  openDrawer: (year, noteId, title) => {
-    set({drawerOpen: true, selectedYear: year, editingNoteId: noteId ?? null, pendingTitle: title ?? ""});
+  openDrawer: (year, noteId, title, sourceEvent) => {
+    set({
+      drawerOpen: true,
+      selectedYear: year,
+      editingNoteId: noteId ?? null,
+      pendingTitle: title ?? "",
+      pendingSourceEvent: sourceEvent ?? null,
+    });
   },
 
   closeDrawer: () => {
-    set({drawerOpen: false, editingNoteId: null, drawerTimelineId: null, pendingTitle: ""});
+    set({drawerOpen: false, editingNoteId: null, drawerTimelineId: null, pendingTitle: "", pendingSourceEvent: null});
   },
 
   saveNote: async (data) => {

@@ -46,8 +46,11 @@ export function MizanLogo() {
         </text>
       </svg>
 
-      <span className="text-no-text/70 text-[13px] font-mono tracking-[0.25em] uppercase">
+      <span className="hidden sm:inline text-no-text/70 text-[13px] font-mono tracking-[0.25em] uppercase">
         Mizan — The Balance of Time & Thoughts
+      </span>
+      <span className="sm:hidden text-no-text/70 text-[13px] font-mono tracking-[0.25em] uppercase">
+        Mizan
       </span>
     </div>
   );

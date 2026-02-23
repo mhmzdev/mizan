@@ -155,7 +155,7 @@ body {
 /* ── Tiptap WYSIWYG editor ─────────────────────────────────────────────────── */
 .tiptap-prose {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.65;
   color: var(--color-no-text);
   caret-color: var(--color-no-text);

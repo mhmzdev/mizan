@@ -36,7 +36,7 @@ function EventDotInner({ cluster, pxPerYear }: EventDotProps) {
 
   const openNote = useCallback((ev: TimelineEvent, e: React.MouseEvent) => {
     e.stopPropagation();
-    useNotesStore.getState().openDrawer(ev.year, undefined, ev.title);
+    useNotesStore.getState().openDrawer(ev.year, undefined, ev.title, ev);
   }, []);
 
   const visible  = events.slice(0, MAX_LIST);

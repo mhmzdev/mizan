@@ -47,6 +47,21 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /* ── Filter out events that have a linked user note ──────────────────── */
+  const allNotes = useNotesStore((s) => s.notes);
+  const linkedEventIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const n of allNotes) {
+      if (n.sourceEventId) ids.add(n.sourceEventId);
+    }
+    return ids;
+  }, [allNotes]);
+
+  const filteredEvents = useMemo(
+    () => events.filter((ev) => !linkedEventIds.has(ev.id)),
+    [events, linkedEventIds]
+  );
+
   /* ── Derived sizing (all zoom-adaptive) ──────────────────────────────── */
   const dotR       = getDotRadius(pxPerYear);
   const spacing    = dotR * 2 + 1;                                    // tight 1px gap
@@ -58,7 +73,7 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
   /* ── Group events into columns ───────────────────────────────────────── */
   const columns = useMemo(() => {
     const map = new Map<number, TimelineEvent[]>();
-    for (const ev of events) {
+    for (const ev of filteredEvents) {
       const bucket = Math.floor(ev.year / bucketYears) * bucketYears;
       const arr = map.get(bucket);
       if (arr) arr.push(ev);
@@ -69,7 +84,7 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
       events: evs,
       cx: (year - YEAR_START) * pxPerYear + (bucketYears * pxPerYear) / 2,
     }));
-  }, [events, pxPerYear, bucketYears]);
+  }, [filteredEvents, pxPerYear, bucketYears]);
 
   /* ── Hover handlers with leave-delay to prevent flicker ─────────────── */
   const handleEnter = useCallback((ev: TimelineEvent, cx: number, cy: number) => {
@@ -87,7 +102,7 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
 
   const handleClick = useCallback((ev: TimelineEvent, e: React.MouseEvent) => {
     e.stopPropagation();
-    useNotesStore.getState().openDrawer(ev.year, undefined, ev.title);
+    useNotesStore.getState().openDrawer(ev.year, undefined, ev.title, ev);
   }, []);
 
   /* ── Render ──────────────────────────────────────────────────────────── */

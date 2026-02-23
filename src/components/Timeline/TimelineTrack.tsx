@@ -62,12 +62,14 @@ function TimelineTrackInner({ timeline, timelineIndex, mode, pxPerYear, visibleR
         }
       />
 
-      {/* Track label */}
-      <div
-        className="sticky top-10 left-3 text-[12px] uppercase tracking-[0.15em] z-10 pointer-events-none select-none inline-block font-semibold transition-colors duration-300"
-        style={{ color: isActive ? alphaColor(color, 85) : alphaColor("var(--color-no-muted)", 65) }}
-      >
-        {timeline.title}
+      {/* Track label — opaque chip at the top-left, above dots and date labels */}
+      <div className="sticky top-2 left-2 z-30 pointer-events-none select-none inline-flex">
+        <span
+          className="text-[10px] uppercase tracking-[0.14em] font-semibold px-2 py-0.5 rounded bg-no-panel border border-no-border/60 transition-colors duration-300"
+          style={{ color: isActive ? alphaColor(color, 90) : alphaColor("var(--color-no-muted)", 70) }}
+        >
+          {timeline.title}
+        </span>
       </div>
 
       {years.map((year) => (

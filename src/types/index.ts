@@ -16,6 +16,8 @@ export interface Note {
   year: number;
   title: string;
   content: string;
+  /** Set when this note annotates a global event — hides that event dot on the timeline. */
+  sourceEventId?: string;
   createdAt: number;
   updatedAt: number;
 }

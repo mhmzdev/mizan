@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { X, Link, Check, ChevronDown, Trash2 } from "lucide-react";
+import { X, Link, Check, ChevronDown, Trash2, Lock } from "lucide-react";
 import { getTimelineColor } from "@/utils/timelineColors";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNotesStore } from "@/stores/notesStore";
@@ -54,6 +54,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
   const notes             = useNotesStore((s) => s.notes);
   const timelines         = useNotesStore((s) => s.timelines);
   const lastTimelineId    = useNotesStore((s) => s.lastTimelineId);
+  const pendingSourceEvent   = useNotesStore((s) => s.pendingSourceEvent);
   const closeDrawer       = useNotesStore((s) => s.closeDrawer);
   const saveNote          = useNotesStore((s) => s.saveNote);
   const updateNote        = useNotesStore((s) => s.updateNote);
@@ -61,12 +62,15 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
   const setLastTimelineId    = useNotesStore((s) => s.setLastTimelineId);
   const setDrawerTimelineId  = useNotesStore((s) => s.setDrawerTimelineId);
 
-  const [yearInput,   setYearInput]  = useState("");
-  const [yearError,   setYearError]  = useState(false);
-  const [title,       setTitle]      = useState("");
-  const [content,     setContent]    = useState("");
-  const [timelineId,  setTimelineId] = useState<number>(lastTimelineId);
-  const [linkCopied,  setLinkCopied] = useState(false);
+  const [yearInput,      setYearInput]     = useState("");
+  const [yearError,      setYearError]     = useState(false);
+  const [title,          setTitle]         = useState("");
+  const [content,        setContent]       = useState("");
+  const [timelineId,     setTimelineId]    = useState<number>(lastTimelineId);
+  const [linkCopied,     setLinkCopied]    = useState(false);
+  const [sourceEventId,  setSourceEventId] = useState<string | null>(null);
+
+  const isEventAnnotation = sourceEventId !== null;
 
   // Resizable drawer width
   const [drawerWidth, setDrawerWidth] = useState(MIN_DRAWER_W);
@@ -103,16 +107,18 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
         setContent(note.content);
         resolvedTimelineId = note.timelineId;
         setTimelineId(note.timelineId);
+        setSourceEventId(note.sourceEventId ?? null);
       }
     } else {
       setYearInput(formatYear(selectedYear));
       setTitle(pendingTitle);
       setContent("");
       setTimelineId(lastTimelineId);
+      setSourceEventId(pendingSourceEvent?.id ?? null);
     }
     setYearError(false);
     setDrawerTimelineId(resolvedTimelineId);
-  }, [drawerOpen, editingNoteId, pendingTitle, selectedYear]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [drawerOpen, editingNoteId, pendingTitle, selectedYear, pendingSourceEvent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTimelineChange = useCallback((id: number) => {
     setTimelineId(id);
@@ -128,10 +134,16 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
     if (editingNoteId !== null) {
       await updateNote(editingNoteId, { timelineId, year: parsedYear, title: title.trim(), content });
     } else {
-      await saveNote({ timelineId, year: parsedYear, title: title.trim(), content });
+      await saveNote({
+        timelineId,
+        year: parsedYear,
+        title: title.trim(),
+        content,
+        ...(sourceEventId ? { sourceEventId } : {}),
+      });
     }
     closeDrawer();
-  }, [yearInput, title, content, timelineId, editingNoteId, saveNote, updateNote, closeDrawer]);
+  }, [yearInput, title, content, timelineId, editingNoteId, sourceEventId, saveNote, updateNote, closeDrawer]);
 
   const handleCopyNoteLink = useCallback(() => {
     if (editingNoteId === null) return;
@@ -260,30 +272,56 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
 
           {/* Year */}
           <div>
-            <input
-              type="text"
-              value={yearInput}
-              onChange={(e) => { setYearInput(e.target.value); setYearError(false); }}
-              placeholder="e.g. 500 BC or 1066 AD"
-              className={`${inputClass} font-mono ${yearError ? "border-red-500/60 focus:border-red-500" : ""}`}
-            />
-            {yearError && (
-              <p className="text-red-400 text-[12px] mt-1">Enter a valid year — e.g. &quot;500 BC&quot; or &quot;1066 AD&quot;</p>
+            {isEventAnnotation ? (
+              <div className="w-full flex items-center gap-2 px-3 py-2 bg-no-bg/40 border border-no-border/40 rounded-lg">
+                <Lock size={10} className="text-no-muted/40 shrink-0" />
+                <span className="text-no-text/60 text-sm font-mono">{yearInput}</span>
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={yearInput}
+                  onChange={(e) => { setYearInput(e.target.value); setYearError(false); }}
+                  placeholder="e.g. 500 BC or 1066 AD"
+                  className={`${inputClass} font-mono ${yearError ? "border-red-500/60 focus:border-red-500" : ""}`}
+                />
+                {yearError && (
+                  <p className="text-red-400 text-[12px] mt-1">Enter a valid year — e.g. &quot;500 BC&quot; or &quot;1066 AD&quot;</p>
+                )}
+              </>
             )}
           </div>
         </div>
 
         {/* ── Content: Title + Notes — one continuous unit ── */}
         <div className="flex flex-col px-4 pt-5 pb-4">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title"
-            className="w-full bg-transparent text-no-text text-[1.4rem] font-semibold placeholder:text-no-muted/35 outline-none mb-4 leading-snug"
-          />
+          {isEventAnnotation ? (
+            <>
+              {/* Locked title — shows the historical event name */}
+              <div className="flex items-start gap-2 mb-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-no-text text-[1.4rem] font-semibold leading-snug">{title}</p>
+                </div>
+                <div className="flex items-center gap-1 mt-1.5 shrink-0 bg-no-card border border-no-border/60 rounded px-1.5 py-0.5">
+                  <Lock size={9} className="text-no-muted/50" />
+                  <span className="text-no-muted/50 text-[9px] uppercase tracking-[0.1em] font-medium">Historical</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Title"
+              className="w-full bg-transparent text-no-text text-[1.4rem] font-semibold placeholder:text-no-muted/35 outline-none mb-4 leading-snug"
+            />
+          )}
           <div className="flex items-center gap-1 mb-2">
-            <span className="text-no-muted/35 text-[11px] uppercase tracking-[0.12em]">Markdown supported</span>
+            <span className="text-no-muted/35 text-[11px] uppercase tracking-[0.12em]">
+              {isEventAnnotation ? "Your notes" : "Markdown supported"}
+            </span>
           </div>
           <MarkdownEditor key={editingNoteId ?? "new"} value={content} onChange={setContent} />
         </div>

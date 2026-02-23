@@ -20,6 +20,11 @@ class MizanDB extends Dexie {
       return trans.table("notes").toCollection().modify({ timelineId: 1 });
     });
 
+    this.version(3).stores({
+      notes: "++id, year, timelineId, sourceEventId",
+      timelines: "++id",
+    });
+
     // Seed the two default timelines on first-ever database creation
     this.on("populate", () => {
       this.timelines.bulkAdd([
