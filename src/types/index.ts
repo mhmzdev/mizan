@@ -1,5 +1,7 @@
 export type ZoomMode = "overview" | "centuries" | "decades" | "years";
 
+export type YearNotation = "BC/AD" | "BCE/CE" | "BH/AH";
+
 export interface Timeline {
   id?: number;
   title: string;

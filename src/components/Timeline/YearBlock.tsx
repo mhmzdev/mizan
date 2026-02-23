@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { formatYear, getLabelIntervalFromPx } from "@/utils/yearUtils";
+import { getLabelIntervalFromPx } from "@/utils/yearUtils";
+import { useFormatYear } from "@/hooks/useFormatYear";
 import { alphaColor } from "@/utils/timelineColors";
 
 interface YearBlockProps {
@@ -13,6 +14,7 @@ interface YearBlockProps {
 }
 
 function YearBlockInner({ year, pxPerYear, offsetPx, isActive, tickColor }: YearBlockProps) {
+  const fmt = useFormatYear();
   const labelInterval = getLabelIntervalFromPx(pxPerYear);
   const isLabel      = year % labelInterval === 0;
   const tickHeight   = isLabel ? 14 : 6;
@@ -51,7 +53,7 @@ function YearBlockInner({ year, pxPerYear, offsetPx, isActive, tickColor }: Year
             color: isActive && tickColor ? alphaColor(tickColor, 80) : undefined,
           }}
         >
-          {formatYear(year)}
+          {fmt(year)}
         </span>
       )}
     </div>

@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef } from "react";
 import { TimelineEvent } from "@/types";
 import { YEAR_START } from "@/utils/constants";
-import { formatYear } from "@/utils/yearUtils";
+import { useFormatYear } from "@/hooks/useFormatYear";
 import { useNotesStore } from "@/stores/notesStore";
 import { EventCluster } from "@/utils/clusterEvents";
 
@@ -18,6 +18,7 @@ const MAX_LIST = 12;
 function EventDotInner({ cluster, pxPerYear }: EventDotProps) {
   const [hovered, setHovered] = useState(false);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fmt = useFormatYear();
 
   const { events, centerYear } = cluster;
   const count    = events.length;
@@ -80,7 +81,7 @@ function EventDotInner({ cluster, pxPerYear }: EventDotProps) {
               {events[0].title}
             </p>
             <p className="text-no-muted text-[12px] font-mono mt-1">
-              {formatYear(events[0].year)}
+              {fmt(events[0].year)}
             </p>
           </div>
         </>
@@ -145,7 +146,7 @@ function EventDotInner({ cluster, pxPerYear }: EventDotProps) {
                       {ev.title}
                     </p>
                     <p className="text-no-muted text-[10px] font-mono mt-0.5">
-                      {formatYear(ev.year)}
+                      {fmt(ev.year)}
                     </p>
                   </button>
                 ))}

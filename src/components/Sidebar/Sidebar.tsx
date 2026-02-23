@@ -5,20 +5,34 @@ import { Plus, X, Pencil, Check, Eye, EyeOff } from "lucide-react";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
 import { useDialogStore } from "@/stores/dialogStore";
-import { formatYear } from "@/utils/yearUtils";
+import { useFormatYear } from "@/hooks/useFormatYear";
+import { useSettingsStore } from "@/stores/settingsStore";
+import { YearNotation } from "@/types";
 import { YEAR_START, YEAR_END, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR, PX_PER_YEAR } from "@/utils/constants";
 
 function parseYear(raw: string): number | null {
   const t = raw.trim().toUpperCase();
   let year: number;
-  if (t.endsWith("BC")) {
-    const n = parseInt(t.replace("BC", "").trim());
+  if (t.endsWith("BCE") || t.endsWith("BC")) {
+    const suffix = t.endsWith("BCE") ? "BCE" : "BC";
+    const n = parseInt(t.slice(0, -suffix.length).trim());
     if (isNaN(n)) return null;
     year = -n;
-  } else if (t.endsWith("AD")) {
-    const n = parseInt(t.replace("AD", "").trim());
+  } else if (t.endsWith("CE") || t.endsWith("AD")) {
+    const suffix = t.endsWith("CE") ? "CE" : "AD";
+    const n = parseInt(t.slice(0, -suffix.length).trim());
     if (isNaN(n)) return null;
     year = n - 1;
+  } else if (t.endsWith("AH")) {
+    const ah = parseInt(t.slice(0, -2).trim());
+    if (isNaN(ah)) return null;
+    const ce = Math.round(622 + (ah - 1) / 1.030684);
+    year = ce >= 1 ? ce - 1 : ce;
+  } else if (t.endsWith("BH")) {
+    const bh = parseInt(t.slice(0, -2).trim());
+    if (isNaN(bh)) return null;
+    const ce = Math.round(622 - bh / 1.030684);
+    year = ce >= 1 ? ce - 1 : ce;
   } else {
     const n = parseInt(t);
     if (isNaN(n)) return null;
@@ -30,6 +44,9 @@ function parseYear(raw: string): number | null {
 const MAX_TIMELINES = 5;
 
 export function Sidebar() {
+  const fmt        = useFormatYear();
+  const notation   = useSettingsStore((s) => s.notation);
+  const setNotation = useSettingsStore((s) => s.setNotation);
   const centerYear = useTimelineStore((s) => s.centerYear);
   const rangeStart = useTimelineStore((s) => s.rangeStart);
   const rangeEnd   = useTimelineStore((s) => s.rangeEnd);
@@ -59,25 +76,8 @@ export function Sidebar() {
   const handleJump = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      const trimmed = jumpInput.trim().toUpperCase();
-      let year: number;
-
-      if (trimmed.endsWith("BC")) {
-        const num = parseInt(trimmed.replace("BC", "").trim());
-        if (isNaN(num)) return;
-        year = -num;
-      } else if (trimmed.endsWith("AD")) {
-        const num = parseInt(trimmed.replace("AD", "").trim());
-        if (isNaN(num)) return;
-        year = num - 1;
-      } else {
-        const num = parseInt(trimmed);
-        if (isNaN(num)) return;
-        year = num > 0 ? num - 1 : -num;
-      }
-
-      year = Math.max(-4000, Math.min(2025, year));
-
+      const year = parseYear(jumpInput);
+      if (year === null) return;
       setPendingNav({ year, zoom: PX_PER_YEAR.years });
       setJumpInput("");
       closeDrawer();
@@ -168,7 +168,7 @@ export function Sidebar() {
           Center
         </div>
         <div className="text-no-text text-2xl font-mono font-semibold tracking-tight">
-          {formatYear(centerYear)}
+          {fmt(centerYear)}
         </div>
       </div>
 
@@ -216,7 +216,7 @@ export function Sidebar() {
           <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 rounded-lg bg-no-blue/10 border border-no-blue/20">
             <div className="w-1.5 h-1.5 rounded-full bg-no-blue shrink-0" />
             <span className="text-no-blue/80 text-[12px] font-mono flex-1 truncate">
-              {formatYear(rangeStart!)} — {formatYear(rangeEnd!)}
+              {fmt(rangeStart!)} — {fmt(rangeEnd!)}
             </span>
           </div>
         )}
@@ -256,6 +256,30 @@ export function Sidebar() {
             Apply Range
           </button>
         </form>
+      </div>
+
+      <div className="h-px bg-no-border" />
+
+      {/* Year Notation */}
+      <div>
+        <div className="text-no-muted text-[12px] uppercase tracking-[0.15em] mb-2.5 font-medium">
+          Year Notation
+        </div>
+        <div className="flex gap-1">
+          {(["BC/AD", "BCE/CE", "BH/AH"] as YearNotation[]).map((n) => (
+            <button
+              key={n}
+              onClick={() => setNotation(n)}
+              className={`flex-1 py-1.5 rounded-lg text-[11px] font-mono font-semibold border transition-colors ${
+                notation === n
+                  ? "bg-no-blue/15 border-no-blue/40 text-no-blue"
+                  : "bg-no-card border-no-border text-no-muted hover:text-no-text hover:border-no-muted/40"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="h-px bg-no-border" />

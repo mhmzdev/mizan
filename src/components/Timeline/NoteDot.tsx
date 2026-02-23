@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Note } from "@/types";
 import { YEAR_START } from "@/utils/constants";
-import { formatYear } from "@/utils/yearUtils";
+import { useFormatYear } from "@/hooks/useFormatYear";
 import { useNotesStore } from "@/stores/notesStore";
 import { ACTIVE_DOT_COLOR, alphaColor } from "@/utils/timelineColors";
 
@@ -28,6 +28,7 @@ export function NoteDot({ note, pxPerYear, stackIndex, color }: NoteDotProps) {
   const openDrawer    = useNotesStore((s) => s.openDrawer);
   const editingNoteId = useNotesStore((s) => s.editingNoteId);
   const drawerOpen    = useNotesStore((s) => s.drawerOpen);
+  const fmt           = useFormatYear();
 
   const [hovered, setHovered] = useState(false);
 
@@ -79,7 +80,7 @@ export function NoteDot({ note, pxPerYear, stackIndex, color }: NoteDotProps) {
               {note.title || "Untitled"}
             </p>
             <p className="text-no-muted text-[10px] font-mono mt-0.5">
-              {formatYear(note.year)}
+              {fmt(note.year)}
             </p>
           </div>
         </div>
@@ -100,7 +101,7 @@ export function NoteDot({ note, pxPerYear, stackIndex, color }: NoteDotProps) {
                 {note.title || "Untitled"}
               </p>
               <p className="text-no-muted text-[12px] font-mono leading-snug mt-0.5">
-                {formatYear(note.year)}
+                {fmt(note.year)}
               </p>
             </div>
           </motion.div>

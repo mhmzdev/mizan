@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Plus, Search, StickyNote, X, ChevronDown, Check } from "lucide-react";
 import { useNotesStore } from "@/stores/notesStore";
 import { useTimelineStore } from "@/stores/timelineStore";
-import { formatYear } from "@/utils/yearUtils";
+import { useFormatYear } from "@/hooks/useFormatYear";
 import { getTimelineColor, alphaColor } from "@/utils/timelineColors";
 import { NoteCard } from "./NoteCard";
 import { TimelineEvent } from "@/types";
@@ -17,6 +17,7 @@ interface NotesPanelProps {
 }
 
 export function NotesPanel({ events }: NotesPanelProps) {
+  const fmt        = useFormatYear();
   const notes      = useNotesStore((s) => s.notes);
   const timelines  = useNotesStore((s) => s.timelines);
   const openDrawer = useNotesStore((s) => s.openDrawer);
@@ -161,7 +162,7 @@ export function NotesPanel({ events }: NotesPanelProps) {
         <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-no-border shrink-0 bg-no-blue/5">
           <div className="w-1.5 h-1.5 rounded-full bg-no-blue shrink-0" />
           <span className="text-no-blue/75 text-[12px] font-mono flex-1 truncate">
-            {formatYear(rangeStart!)} — {formatYear(rangeEnd!)}
+            {fmt(rangeStart!)} — {fmt(rangeEnd!)}
           </span>
           <button
             onClick={clearRange}
@@ -225,7 +226,7 @@ export function NotesPanel({ events }: NotesPanelProps) {
               >
                 <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-no-blue/60" />
                 <div className="flex items-center justify-between gap-1 mb-1.5">
-                  <span className="text-no-gold/80 text-[12px] font-mono">{formatYear(ev.year)}</span>
+                  <span className="text-no-gold/80 text-[12px] font-mono">{fmt(ev.year)}</span>
                   <span className="text-[9px] uppercase tracking-wide font-medium text-no-blue/50">Historical</span>
                 </div>
                 <div className="text-no-text/90 text-xs font-medium leading-snug truncate">{ev.title}</div>

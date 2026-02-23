@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Note } from "@/types";
-import { formatYear } from "@/utils/yearUtils";
+import { useFormatYear } from "@/hooks/useFormatYear";
 import { useNotesStore } from "@/stores/notesStore";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { MAX_PX_PER_YEAR, YEAR_START } from "@/utils/constants";
@@ -19,6 +19,7 @@ function stripHtml(html: string): string {
 export function NoteCard({ note }: NoteCardProps) {
   const openDrawer   = useNotesStore((s) => s.openDrawer);
   const timelines    = useNotesStore((s) => s.timelines);
+  const fmt          = useFormatYear();
   const timelineIndex = timelines.findIndex((t) => t.id === note.timelineId);
   const timelineName  = timelineIndex >= 0 ? timelines[timelineIndex].title : "";
   const timelineColor = timelineIndex >= 0 ? getTimelineColor(timelineIndex) : "#6C7380";
@@ -38,7 +39,7 @@ export function NoteCard({ note }: NoteCardProps) {
     >
       <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: timelineColor }} />
       <div className="flex items-center justify-between gap-1 mb-1.5">
-        <span className="text-no-gold/80 text-[12px] font-mono">{formatYear(note.year)}</span>
+        <span className="text-no-gold/80 text-[12px] font-mono">{fmt(note.year)}</span>
         {timelineName && (
           <span
             className="text-[9px] uppercase tracking-wide truncate max-w-[80px] font-medium"

@@ -1,17 +1,41 @@
-import { ZoomMode } from "@/types";
+import { ZoomMode, YearNotation } from "@/types";
 import { PX_PER_YEAR, YEAR_START, YEAR_END } from "./constants";
 
 /**
+ * Convert internal year to astronomical CE year.
+ * internal 0 → 1 CE, internal -1 → 0 CE (= 1 BC), internal -2 → -1 CE (= 2 BC).
+ */
+function toAstronomicalCE(year: number): number {
+  return year + 1;
+}
+
+/** Format internal year as Hijri (AH/BH). 1 AH ≈ 622 CE. */
+function formatHijri(year: number): string {
+  const ce = toAstronomicalCE(year);
+  if (ce >= 622) {
+    const ah = Math.round((ce - 622) * 1.030684) + 1;
+    return `${ah} AH`;
+  }
+  const bh = Math.max(1, Math.round((622 - ce) * 1.030684));
+  return `${bh} BH`;
+}
+
+/**
  * Format a continuous integer year for display.
- * year < 0  → "|year| BC"
- * year >= 0 → "(year+1) AD"
+ * year < 0  → "|year| BC" / "|year| BCE" / "X BH"
+ * year >= 0 → "(year+1) AD" / "(year+1) CE" / "X AH"
  *
  * Internally -1 = 1 BC, 0 = 1 AD (no year zero).
  */
-export function formatYear(year: number): string {
-  if (year < 0) {
-    return `${Math.abs(year)} BC`;
+export function formatYear(year: number, notation: YearNotation = "BC/AD"): string {
+  if (notation === "BCE/CE") {
+    if (year < 0) return `${Math.abs(year)} BCE`;
+    return `${year + 1} CE`;
   }
+  if (notation === "BH/AH") {
+    return formatHijri(year);
+  }
+  if (year < 0) return `${Math.abs(year)} BC`;
   return `${year + 1} AD`;
 }
 

@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo, useRef } from "react";
 import { TimelineEvent } from "@/types";
 import { YEAR_START } from "@/utils/constants";
-import { formatYear } from "@/utils/yearUtils";
+import { useFormatYear } from "@/hooks/useFormatYear";
 import { useNotesStore } from "@/stores/notesStore";
 
 /* ── Layout constants ─────────────────────────────────────────────────────── */
@@ -46,6 +46,7 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
   const [hovered,   setHovered]   = useState<HoveredDot | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fmt = useFormatYear();
 
   /* ── Active event (drawer open for this event) ───────────────────────── */
   const drawerOpen        = useNotesStore((s) => s.drawerOpen);
@@ -188,7 +189,7 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
         >
           <div className="bg-no-panel border border-no-border/80 rounded-lg px-2.5 py-1.5 shadow-xl whitespace-nowrap">
             <p className="text-no-text text-[12px] font-medium leading-snug">{hovered.event.title}</p>
-            <p className="text-no-muted text-[10px] font-mono mt-0.5">{formatYear(hovered.event.year)}</p>
+            <p className="text-no-muted text-[10px] font-mono mt-0.5">{fmt(hovered.event.year)}</p>
           </div>
         </div>
       )}

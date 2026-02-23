@@ -6,7 +6,7 @@ import { getTimelineColor } from "@/utils/timelineColors";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNotesStore } from "@/stores/notesStore";
 import { useDialogStore } from "@/stores/dialogStore";
-import { formatYear } from "@/utils/yearUtils";
+import { useFormatYear } from "@/hooks/useFormatYear";
 import { buildNoteUrl } from "@/hooks/useUrlSync";
 import { MarkdownEditor } from "./MarkdownEditor";
 
@@ -15,19 +15,31 @@ const MAX_DRAWER_W = 700;
 const STORAGE_KEY = "mizan_drawer_width";
 
 function parseYearInput(raw: string): number | null {
-  const trimmed = raw.trim().toUpperCase();
+  const t = raw.trim().toUpperCase();
   let year: number;
 
-  if (trimmed.endsWith("BC")) {
-    const num = parseInt(trimmed.replace("BC", "").trim(), 10);
+  if (t.endsWith("BCE") || t.endsWith("BC")) {
+    const suffix = t.endsWith("BCE") ? "BCE" : "BC";
+    const num = parseInt(t.slice(0, -suffix.length).trim(), 10);
     if (isNaN(num)) return null;
     year = -num;
-  } else if (trimmed.endsWith("AD")) {
-    const num = parseInt(trimmed.replace("AD", "").trim(), 10);
+  } else if (t.endsWith("CE") || t.endsWith("AD")) {
+    const suffix = t.endsWith("CE") ? "CE" : "AD";
+    const num = parseInt(t.slice(0, -suffix.length).trim(), 10);
     if (isNaN(num)) return null;
     year = num - 1;
+  } else if (t.endsWith("AH")) {
+    const ah = parseInt(t.slice(0, -2).trim(), 10);
+    if (isNaN(ah)) return null;
+    const ce = Math.round(622 + (ah - 1) / 1.030684);
+    year = ce >= 1 ? ce - 1 : ce;
+  } else if (t.endsWith("BH")) {
+    const bh = parseInt(t.slice(0, -2).trim(), 10);
+    if (isNaN(bh)) return null;
+    const ce = Math.round(622 - bh / 1.030684);
+    year = ce >= 1 ? ce - 1 : ce;
   } else {
-    const num = parseInt(trimmed, 10);
+    const num = parseInt(t, 10);
     if (isNaN(num)) return null;
     year = num > 0 ? num - 1 : -num;
   }
@@ -47,6 +59,7 @@ interface NoteDrawerProps {
 }
 
 export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProps) {
+  const fmt               = useFormatYear();
   const drawerOpen        = useNotesStore((s) => s.drawerOpen);
   const editingNoteId     = useNotesStore((s) => s.editingNoteId);
   const selectedYear      = useNotesStore((s) => s.selectedYear);
@@ -104,7 +117,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
     if (editingNoteId !== null) {
       const note = notes.find((n) => n.id === editingNoteId);
       if (note) {
-        setYearInput(formatYear(note.year));
+        setYearInput(fmt(note.year));
         setTitle(note.title);
         setContent(note.content);
         resolvedTimelineId = note.timelineId;
@@ -112,7 +125,7 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
         setSourceEventId(note.sourceEventId ?? null);
       }
     } else {
-      setYearInput(formatYear(selectedYear));
+      setYearInput(fmt(selectedYear));
       setTitle(pendingTitle);
       setContent("");
       setTimelineId(lastTimelineId);

@@ -11,7 +11,8 @@ import React, {
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
 import { getVisibleRangeFromPx } from "@/utils/virtualization";
-import { pxToYearContinuous, formatYear, getModeFromPxPerYear } from "@/utils/yearUtils";
+import { pxToYearContinuous, getModeFromPxPerYear } from "@/utils/yearUtils";
+import { useFormatYear } from "@/hooks/useFormatYear";
 import { PX_PER_YEAR, YEAR_START, YEAR_END, TOTAL_YEARS, MIN_PX_PER_YEAR, MAX_PX_PER_YEAR } from "@/utils/constants";
 import { getTimelineColor, alphaColor } from "@/utils/timelineColors";
 import { TimelineTrack } from "./TimelineTrack";
@@ -36,6 +37,7 @@ interface TimelineContainerProps {
 export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef   = useRef<HTMLDivElement>(null);
+  const fmt = useFormatYear();
 
   // Sidebar animation refs
   const isSettingScroll  = useRef(false);
@@ -568,7 +570,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
           <div className="absolute top-0 bottom-0 left-0 w-px bg-no-muted/30 pointer-events-none z-20" />
           <div className="absolute top-3 left-2 pointer-events-none z-20 select-none">
             <div className="text-no-muted/75 text-[13px] font-mono font-semibold whitespace-nowrap">
-              {formatYear(YEAR_START)}
+              {fmt(YEAR_START)}
             </div>
             <div className="text-no-muted/35 text-[11px] uppercase tracking-[0.12em] mt-0.5 whitespace-nowrap">
               Start of timeline
@@ -579,7 +581,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
           <div className="absolute top-0 bottom-0 right-0 w-px bg-no-muted/30 pointer-events-none z-20" />
           <div className="absolute top-3 right-2 pointer-events-none z-20 select-none text-right">
             <div className="text-no-muted/75 text-[13px] font-mono font-semibold whitespace-nowrap">
-              {formatYear(YEAR_END)}
+              {fmt(YEAR_END)}
             </div>
             <div className="text-no-muted/35 text-[11px] uppercase tracking-[0.12em] mt-0.5 whitespace-nowrap">
               End of timeline
@@ -665,7 +667,7 @@ export function TimelineContainer({ eventsByYear }: TimelineContainerProps) {
             className="absolute -translate-y-1/2 bg-no-panel/90 px-2 py-0.5 rounded-md text-xs font-mono whitespace-nowrap"
             style={{ top: mouse.y, left: labelOffsetX, color: cursorColor }}
           >
-            {formatYear(hoveredYear)}
+            {fmt(hoveredYear)}
           </div>
         </div>
       )}
