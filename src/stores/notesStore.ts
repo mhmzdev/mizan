@@ -3,6 +3,13 @@ import {Note, Timeline, TimelineEvent} from "@/types";
 import {db} from "@/lib/db";
 import {useTimelineStore} from "@/stores/timelineStore";
 
+export interface ExportPayload {
+  version: 1;
+  exportedAt: number;
+  timelines: Timeline[];
+  notes: Note[];
+}
+
 const LAST_TIMELINE_KEY = "mizan_last_timeline_id";
 
 function readLastTimelineId(): number {
@@ -51,6 +58,7 @@ interface NotesState {
   linkNotes: (noteId: number, partnerId: number) => Promise<void>;
   unlinkNotes: (noteId: number) => Promise<void>;
   clearBrokenLink: (noteId: number) => Promise<void>;
+  importData: (payload: ExportPayload) => Promise<void>;
 
   /** Re-insert the stashed item back into DB and restore it in state. */
   undoDelete: () => Promise<void>;
@@ -252,5 +260,46 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     await db.notes.where("id").equals(noteId).modify((obj: any) => { delete obj.linkedNoteId; });
     const notes = await db.notes.orderBy("year").toArray();
     set({ notes });
+  },
+
+  importData: async (payload) => {
+    // Wipe existing data
+    await db.notes.clear();
+    await db.timelines.clear();
+
+    // Re-import timelines — track origId → newId for remapping
+    const timelineIdMap = new Map<number, number>();
+    for (const tl of payload.timelines) {
+      const { id: origId, ...tlData } = tl;
+      const newId = await db.timelines.add(tlData as Timeline);
+      if (origId !== undefined) timelineIdMap.set(origId, newId as number);
+    }
+
+    // Re-import notes (without linkedNoteId first) — track origId → newId
+    const noteIdMap = new Map<number, number>();
+    for (const note of payload.notes) {
+      const { id: origId, linkedNoteId: _linked, ...noteData } = note;
+      const newTimelineId = timelineIdMap.get(noteData.timelineId) ?? noteData.timelineId;
+      const newId = await db.notes.add({ ...noteData, timelineId: newTimelineId } as Note);
+      if (origId !== undefined) noteIdMap.set(origId, newId as number);
+    }
+
+    // Remap linkedNoteIds using both ID maps
+    for (const note of payload.notes) {
+      if (!note.id || !note.linkedNoteId) continue;
+      const newNoteId    = noteIdMap.get(note.id);
+      const newPartnerId = noteIdMap.get(note.linkedNoteId);
+      if (newNoteId && newPartnerId) {
+        await db.notes.update(newNoteId, { linkedNoteId: newPartnerId });
+      }
+    }
+
+    // Reload store state
+    const timelines = await db.timelines.toArray().then((ts) => ts.sort((a, b) => a.createdAt - b.createdAt));
+    const notes     = await db.notes.orderBy("year").toArray();
+    const firstId   = timelines[0]?.id ?? 1;
+    writeLastTimelineId(firstId);
+    set({ timelines, notes, lastTimelineId: firstId, pendingDelete: null });
+    useTimelineStore.getState().setActiveInterval(null);
   },
 }));

@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Link2, Check, ChevronLeft, ChevronRight, StickyNote, Layers, Sun, Moon, Play } from "lucide-react";
+import { Link2, Check, ChevronLeft, ChevronRight, StickyNote, Layers, Sun, Moon, Play, HardDrive } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { TimelineContainer } from "@/components/Timeline/TimelineContainer";
 import { NotesPanel } from "@/components/Notes/NotesPanel";
 import { NoteDrawer } from "@/components/Notes/NoteDrawer";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ExportImportDialog } from "@/components/ui/ExportImportDialog";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { MizanLogo } from "@/components/ui/MizanLogo";
 import { TourOverlay } from "@/components/Tour/TourOverlay";
@@ -27,8 +28,9 @@ const INSTANT   = { duration: 0 } as const;
 
 export default function Home() {
   const [events,      setEvents]      = useState<TimelineEvent[]>([]);
-  const [viewCopied,  setViewCopied]  = useState(false);
-  const [isLoading,   setIsLoading]   = useState(true);
+  const [viewCopied,         setViewCopied]         = useState(false);
+  const [exportImportOpen,   setExportImportOpen]   = useState(false);
+  const [isLoading,          setIsLoading]          = useState(true);
   const loadedRef = useRef({ events: false, db: false, startTime: Date.now() });
 
   // Panel open/close (desktop/tablet)
@@ -247,6 +249,13 @@ export default function Home() {
             <Play size={12} />
           </button>
           <button
+            onClick={() => setExportImportOpen(true)}
+            title="Export / Import notes"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
+          >
+            <HardDrive size={13} />
+          </button>
+          <button
             onClick={toggleTheme}
             title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
@@ -435,6 +444,7 @@ export default function Home() {
       </AnimatePresence>
 
       <ConfirmDialog />
+      <ExportImportDialog open={exportImportOpen} onClose={() => setExportImportOpen(false)} />
       <UndoToast />
       <TourOverlay />
 
