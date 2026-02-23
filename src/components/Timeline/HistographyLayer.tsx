@@ -47,6 +47,11 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /* ── Active event (drawer open for this event) ───────────────────────── */
+  const drawerOpen        = useNotesStore((s) => s.drawerOpen);
+  const pendingSourceEvent = useNotesStore((s) => s.pendingSourceEvent);
+  const activeEventId = drawerOpen && pendingSourceEvent ? pendingSourceEvent.id : null;
+
   /* ── Filter out events that have a linked user note ──────────────────── */
   const allNotes = useNotesStore((s) => s.notes);
   const linkedEventIds = useMemo(() => {
@@ -124,17 +129,22 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
                 const ev  = colEvents[i * 2];
                 const cy  = TRACK_CENTER_Y - (i + 1) * spacing;
                 const isH = hoveredId === ev.id;
+                const isA = activeEventId === ev.id;
                 return (
-                  <circle
-                    key={ev.id}
-                    cx={cx} cy={cy}
-                    r={isH ? dotR + 1.5 : dotR}
-                    fill={isH ? "rgba(116,160,255,1)" : "rgba(116,160,255,0.55)"}
-                    style={{ pointerEvents: "auto", cursor: "pointer", transition: "r 0.1s, fill 0.1s" }}
-                    onMouseEnter={() => handleEnter(ev, cx, cy)}
-                    onMouseLeave={handleLeave}
-                    onClick={(e) => handleClick(ev, e)}
-                  />
+                  <g key={ev.id}>
+                    {isA && <circle cx={cx} cy={cy} r={dotR + 1} fill="rgba(116,160,255,0.6)" className="histo-ring" />}
+                    <circle
+                      cx={cx} cy={cy}
+                      r={isA ? dotR + 2 : (isH ? dotR + 1.5 : dotR)}
+                      fill="rgba(116,160,255,1)"
+                      fillOpacity={isA ? 1 : (isH ? 1 : 0.55)}
+                      className={isA ? "histo-glow" : undefined}
+                      style={{ pointerEvents: "auto", cursor: "pointer", transition: isA ? undefined : "r 0.1s, fill-opacity 0.1s" }}
+                      onMouseEnter={() => { if (!isA) handleEnter(ev, cx, cy); }}
+                      onMouseLeave={handleLeave}
+                      onClick={(e) => handleClick(ev, e)}
+                    />
+                  </g>
                 );
               })}
 
@@ -143,17 +153,22 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
                 const ev  = colEvents[i * 2 + 1];
                 const cy  = TRACK_CENTER_Y + (i + 1) * spacing;
                 const isH = hoveredId === ev.id;
+                const isA = activeEventId === ev.id;
                 return (
-                  <circle
-                    key={ev.id}
-                    cx={cx} cy={cy}
-                    r={isH ? dotR + 1.5 : dotR}
-                    fill={isH ? "rgba(116,160,255,1)" : "rgba(116,160,255,0.55)"}
-                    style={{ pointerEvents: "auto", cursor: "pointer", transition: "r 0.1s, fill 0.1s" }}
-                    onMouseEnter={() => handleEnter(ev, cx, cy)}
-                    onMouseLeave={handleLeave}
-                    onClick={(e) => handleClick(ev, e)}
-                  />
+                  <g key={ev.id}>
+                    {isA && <circle cx={cx} cy={cy} r={dotR + 1} fill="rgba(116,160,255,0.6)" className="histo-ring" />}
+                    <circle
+                      cx={cx} cy={cy}
+                      r={isA ? dotR + 2 : (isH ? dotR + 1.5 : dotR)}
+                      fill="rgba(116,160,255,1)"
+                      fillOpacity={isA ? 1 : (isH ? 1 : 0.55)}
+                      className={isA ? "histo-glow" : undefined}
+                      style={{ pointerEvents: "auto", cursor: "pointer", transition: isA ? undefined : "r 0.1s, fill-opacity 0.1s" }}
+                      onMouseEnter={() => { if (!isA) handleEnter(ev, cx, cy); }}
+                      onMouseLeave={handleLeave}
+                      onClick={(e) => handleClick(ev, e)}
+                    />
+                  </g>
                 );
               })}
             </g>
@@ -161,8 +176,8 @@ export function HistographyLayer({ events, pxPerYear }: HistographyLayerProps) {
         })}
       </svg>
 
-      {/* ── Hover tooltip ────────────────────────────────────────────────── */}
-      {hovered && (
+      {/* ── Hover tooltip — hidden when that dot is the active one ─────── */}
+      {hovered && hovered.event.id !== activeEventId && (
         <div
           className="absolute z-50 pointer-events-none"
           style={{

@@ -258,7 +258,7 @@ export default function Home() {
             className="overflow-hidden shrink-0 h-full z-10"
           >
             <div style={{ width: notesWidth }} className="h-full">
-              <NotesPanel />
+              <NotesPanel events={events} />
             </div>
           </motion.div>
         )}
@@ -412,7 +412,7 @@ export default function Home() {
               >
                 <div className="w-10 h-1 rounded-full bg-no-border" />
               </div>
-              {mobileSheet === "notes" ? <NotesPanel /> : <Sidebar />}
+              {mobileSheet === "notes" ? <NotesPanel events={events} /> : <Sidebar />}
             </motion.div>
           </>
         )}

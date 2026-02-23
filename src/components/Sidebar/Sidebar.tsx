@@ -379,7 +379,7 @@ export function Sidebar() {
       </div>
 
       {/* Shortcuts */}
-      <div className="mt-auto pt-2 border-t border-no-border/50">
+      <div className="pt-2 border-t border-no-border/50">
         <div className="text-no-muted/50 text-[10px] uppercase tracking-[0.12em] font-medium mb-2.5">Shortcuts</div>
         <div className="flex flex-col gap-1.5">
           {/* 1/2/3 zoom levels */}
