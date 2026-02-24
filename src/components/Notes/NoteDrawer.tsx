@@ -357,64 +357,87 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
         <div className="flex flex-col gap-2 px-4 py-3 border-b border-no-border/50">
           <div className="flex items-center justify-between">
             <span className={labelClass}>Location</span>
-            {viewMode === "map" ? (
-              /* In map view — "Set / Update location" triggers pick mode */
-              <button
-                onClick={() => useMapStore.getState().setLocationPickMode(true)}
-                className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
-              >
-                <MapPin size={11} />
-                <span>{lat !== null ? "Update location" : "Set location"}</span>
-              </button>
-            ) : lat !== null ? (
-              /* In timeline view with coords — "Go to map" centers + switches */
-              <button
-                onClick={() => {
-                  useMapStore.getState().setMapCenter({ lat: lat!, lng: lng! });
-                  useMapStore.getState().setViewMode("map");
-                }}
-                className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
-              >
-                <Map size={11} />
-                <span>Go to map</span>
-              </button>
-            ) : (
-              /* In timeline view with no coords — "Set location" switches to map + pick */
-              <button
-                onClick={() => {
-                  useMapStore.getState().setViewMode("map");
-                  useMapStore.getState().setLocationPickMode(true);
-                }}
-                className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
-              >
-                <MapPin size={11} />
-                <span>Set location</span>
-              </button>
+            {!isEventAnnotation && (
+              viewMode === "map" ? (
+                /* In map view — "Set / Update location" triggers pick mode */
+                <button
+                  onClick={() => useMapStore.getState().setLocationPickMode(true)}
+                  className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
+                >
+                  <MapPin size={11} />
+                  <span>{lat !== null ? "Update location" : "Set location"}</span>
+                </button>
+              ) : lat !== null ? (
+                /* In timeline view with coords — "Go to map" centers + switches */
+                <button
+                  onClick={() => {
+                    useMapStore.getState().setMapCenter({ lat: lat!, lng: lng! });
+                    useMapStore.getState().setViewMode("map");
+                  }}
+                  className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
+                >
+                  <Map size={11} />
+                  <span>Go to map</span>
+                </button>
+              ) : (
+                /* In timeline view with no coords — "Set location" switches to map + pick */
+                <button
+                  onClick={() => {
+                    useMapStore.getState().setViewMode("map");
+                    useMapStore.getState().setLocationPickMode(true);
+                  }}
+                  className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
+                >
+                  <MapPin size={11} />
+                  <span>Set location</span>
+                </button>
+              )
             )}
           </div>
-          <div className="flex gap-2 items-center">
-            <div className="flex-1 bg-no-bg/60 border border-no-border/70 rounded-lg px-2.5 py-1.5 text-no-text text-[12px] font-mono min-w-0">
-              {lat !== null ? (
-                <span>{lat.toFixed(4)}° lat</span>
-              ) : (
-                <span className="text-no-muted/40">No location</span>
+          {isEventAnnotation ? (
+            /* Read-only locked display for event annotations */
+            <div className="flex gap-2 items-center">
+              <div className="flex-1 flex items-center gap-2 bg-no-bg/40 border border-no-border/40 rounded-lg px-2.5 py-1.5 min-w-0">
+                <Lock size={10} className="text-no-muted/40 shrink-0" />
+                {lat !== null ? (
+                  <span className="text-no-text/60 text-[12px] font-mono">{lat.toFixed(4)}° lat</span>
+                ) : (
+                  <span className="text-no-muted/40 text-[12px] font-mono">No location</span>
+                )}
+              </div>
+              {lat !== null && lng !== null && (
+                <div className="flex-1 flex items-center gap-2 bg-no-bg/40 border border-no-border/40 rounded-lg px-2.5 py-1.5 min-w-0">
+                  <Lock size={10} className="text-no-muted/40 shrink-0" />
+                  <span className="text-no-text/60 text-[12px] font-mono">{lng.toFixed(4)}° lng</span>
+                </div>
               )}
             </div>
-            {lng !== null && lat !== null && (
+          ) : (
+            /* Editable display for regular notes */
+            <div className="flex gap-2 items-center">
               <div className="flex-1 bg-no-bg/60 border border-no-border/70 rounded-lg px-2.5 py-1.5 text-no-text text-[12px] font-mono min-w-0">
-                <span>{lng.toFixed(4)}° lng</span>
+                {lat !== null ? (
+                  <span>{lat.toFixed(4)}° lat</span>
+                ) : (
+                  <span className="text-no-muted/40">No location</span>
+                )}
               </div>
-            )}
-            {lat !== null && (
-              <button
-                onClick={() => { setLat(null); setLng(null); }}
-                title="Clear location"
-                className="w-6 h-6 flex items-center justify-center rounded text-no-muted/50 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
-              >
-                <X size={11} />
-              </button>
-            )}
-          </div>
+              {lng !== null && lat !== null && (
+                <div className="flex-1 bg-no-bg/60 border border-no-border/70 rounded-lg px-2.5 py-1.5 text-no-text text-[12px] font-mono min-w-0">
+                  <span>{lng.toFixed(4)}° lng</span>
+                </div>
+              )}
+              {lat !== null && (
+                <button
+                  onClick={() => { setLat(null); setLng(null); }}
+                  title="Clear location"
+                  className="w-6 h-6 flex items-center justify-center rounded text-no-muted/50 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                >
+                  <X size={11} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Content: Title + Notes — one continuous unit ── */}
