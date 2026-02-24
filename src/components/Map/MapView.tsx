@@ -457,19 +457,36 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
   // ── Reactive: fly to note/event when drawer opens ────────────────────────
   useEffect(() => {
     if (!drawerOpen || !mapRef.current) return;
-    let lat: number | undefined;
-    let lng: number | undefined;
+    let lat:  number | undefined;
+    let lng:  number | undefined;
+    let year: number | undefined;
 
     if (editingNoteId != null) {
       // Editing an existing note — use its coords or fall back to source event
       const note = useNotesStore.getState().notes.find((n) => n.id === editingNoteId);
       const ev = note?.sourceEventId ? eventsRef.current.find((e) => e.id === note.sourceEventId) : null;
-      lat = note?.lat ?? ev?.lat;
-      lng = note?.lng ?? ev?.lng;
+      lat  = note?.lat  ?? ev?.lat;
+      lng  = note?.lng  ?? ev?.lng;
+      year = note?.year ?? ev?.year;
     } else if (pendingSourceEvent?.lat != null && pendingSourceEvent?.lng != null) {
       // Annotation mode from a historical event card — fly to the event location
-      lat = pendingSourceEvent.lat;
-      lng = pendingSourceEvent.lng;
+      lat  = pendingSourceEvent.lat;
+      lng  = pendingSourceEvent.lng;
+      year = pendingSourceEvent.year;
+    }
+
+    // If the note/event's year falls outside the current slider window, shift the
+    // window so the pin becomes visible (preserve the existing window size).
+    if (year !== undefined) {
+      const { mapRangeStart, mapRangeEnd, setMapRange } = useMapStore.getState();
+      const windowSize = mapRangeEnd - mapRangeStart;
+      if (year < mapRangeStart) {
+        const newStart = Math.max(YEAR_START, year);
+        setMapRange(newStart, newStart + windowSize);
+      } else if (year > mapRangeEnd) {
+        const newEnd = Math.min(YEAR_END, year);
+        setMapRange(Math.max(YEAR_START, newEnd - windowSize), newEnd);
+      }
     }
 
     if (lat == null || lng == null) return;
