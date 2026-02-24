@@ -194,8 +194,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   closeDrawer: () => {
     useTimelineStore.getState().setActiveInterval(null);
-    // Also clear pick mode so crosshair cursor doesn't linger
     useMapStore.getState().setLocationPickMode(false);
+    useMapStore.getState().setDrawerPreviewPin(null);
     set({drawerOpen: false, editingNoteId: null, drawerTimelineId: null, pendingTitle: "", pendingSourceEvent: null, pendingLat: null, pendingLng: null});
   },
 

@@ -358,13 +358,13 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
           <div className="flex items-center justify-between">
             <span className={labelClass}>Location</span>
             {viewMode === "map" ? (
-              /* In map view — "Set location" triggers pick mode */
+              /* In map view — "Set / Update location" triggers pick mode */
               <button
                 onClick={() => useMapStore.getState().setLocationPickMode(true)}
                 className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
               >
                 <MapPin size={11} />
-                <span>Set location</span>
+                <span>{lat !== null ? "Update location" : "Set location"}</span>
               </button>
             ) : lat !== null ? (
               /* In timeline view with coords — "Go to map" centers + switches */

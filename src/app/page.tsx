@@ -57,6 +57,30 @@ export default function Home() {
   const viewMode    = useMapStore((s) => s.viewMode);
   const setViewMode = useMapStore((s) => s.setViewMode);
 
+  // Persist timeline scroll position across map ↔ timeline switches.
+  // TimelineContainer's useLayoutEffect always resets to year 0 on mount,
+  // so we save the last known position before going to map and restore it after.
+  const savedTimelinePos = useRef<{year: number; zoom: number} | null>(null);
+  const prevViewMode = useRef(viewMode);
+  useEffect(() => {
+    if (prevViewMode.current === "timeline" && viewMode === "map") {
+      // Save position before TimelineContainer unmounts
+      const { centerYear, pxPerYear } = useTimelineStore.getState();
+      savedTimelinePos.current = { year: centerYear, zoom: pxPerYear };
+    } else if (prevViewMode.current === "map" && viewMode === "timeline") {
+      // TimelineContainer just mounted and reset to year 0. After its
+      // useLayoutEffect sets the default pendingNav, we override it so the
+      // landing animation targets the saved position instead.
+      if (savedTimelinePos.current) {
+        const saved = savedTimelinePos.current;
+        setTimeout(() => {
+          useTimelineStore.getState().setPendingNav({ year: saved.year, zoom: saved.zoom });
+        }, 0);
+      }
+    }
+    prevViewMode.current = viewMode;
+  }, [viewMode]);
+
   const tourActive = useTourStore((s) => s.active);
   const tourStep   = useTourStore((s) => s.step);
   const startTour  = useTourStore((s) => s.start);
@@ -247,14 +271,14 @@ export default function Home() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="h-12 border-b border-no-border flex items-center px-5 shrink-0 bg-no-panel z-50 relative">
         <MizanLogo />
+        <button
+          onClick={startTour}
+          title="Take the tour"
+          className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
+        >
+          <Play size={12} />
+        </button>
         <div className="ml-auto flex items-center gap-1">
-          <button
-            onClick={startTour}
-            title="Take the tour"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
-          >
-            <Play size={12} />
-          </button>
           <button
             onClick={() => setViewMode(viewMode === "map" ? "timeline" : "map")}
             title={viewMode === "map" ? "Switch to timeline" : "Switch to map"}
