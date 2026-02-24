@@ -4,44 +4,12 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import maplibregl, {GeoJSONSource} from "maplibre-gl";
 import React, {useEffect, useRef, useState} from "react";
 import {motion, AnimatePresence} from "framer-motion";
-import {X, Clock} from "lucide-react";
 import {useNotesStore} from "@/stores/notesStore";
 import {useMapStore} from "@/stores/mapStore";
 import {useTimelineStore} from "@/stores/timelineStore";
-import {useFormatYear} from "@/hooks/useFormatYear";
 import {Note, Timeline, TimelineEvent} from "@/types";
+import {TimeSlider} from "./TimeSlider";
 import {YEAR_START, YEAR_END} from "@/utils/constants";
-
-function parseYearInput(raw: string): number | null {
-  const t = raw.trim().toUpperCase();
-  let year: number;
-  if (t.endsWith("BCE") || t.endsWith("BC")) {
-    const suffix = t.endsWith("BCE") ? "BCE" : "BC";
-    const num = parseInt(t.slice(0, -suffix.length).trim(), 10);
-    if (isNaN(num)) return null;
-    year = -num;
-  } else if (t.endsWith("CE") || t.endsWith("AD")) {
-    const suffix = t.endsWith("CE") ? "CE" : "AD";
-    const num = parseInt(t.slice(0, -suffix.length).trim(), 10);
-    if (isNaN(num)) return null;
-    year = num - 1;
-  } else if (t.endsWith("AH")) {
-    const ah = parseInt(t.slice(0, -2).trim(), 10);
-    if (isNaN(ah)) return null;
-    const ce = Math.round(622 + (ah - 1) / 1.030684);
-    year = ce >= 1 ? ce - 1 : ce;
-  } else if (t.endsWith("BH")) {
-    const bh = parseInt(t.slice(0, -2).trim(), 10);
-    if (isNaN(bh)) return null;
-    const ce = Math.round(622 - bh / 1.030684);
-    year = ce >= 1 ? ce - 1 : ce;
-  } else {
-    const num = parseInt(t, 10);
-    if (isNaN(num)) return null;
-    year = num > 0 ? num - 1 : -num;
-  }
-  return Math.max(YEAR_START, Math.min(YEAR_END, year));
-}
 
 const PROTOMAPS_KEY = process.env.NEXT_PUBLIC_PROTOMAPS_KEY;
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -164,12 +132,7 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const previewMarkerRef = useRef<maplibregl.Marker | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
   const styleLoadHandlerRef = useRef<(() => void) | null>(null);
-  const [filterFrom, setFilterFrom] = useState("");
-  const [filterTo, setFilterTo] = useState("");
-  const [filterError, setFilterError] = useState(false);
-  const fmt = useFormatYear();
 
   const notes = useNotesStore((s) => s.notes);
   const timelines = useNotesStore((s) => s.timelines);
@@ -200,7 +163,6 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
 
   const rangeStart = useTimelineStore((s) => s.rangeStart);
   const rangeEnd = useTimelineStore((s) => s.rangeEnd);
-  const clearRange = useTimelineStore((s) => s.clearRange);
   const rangeStartRef = useRef(rangeStart);
   const rangeEndRef = useRef(rangeEnd);
   rangeStartRef.current = rangeStart;
@@ -548,19 +510,6 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
       .addTo(mapRef.current);
   }, [drawerPreviewPin]);
 
-  function applyFilter() {
-    const from = parseYearInput(filterFrom);
-    const to = parseYearInput(filterTo);
-    if (from === null || to === null) {setFilterError(true); return;}
-    useTimelineStore.getState().setRange(Math.min(from, to), Math.max(from, to));
-    setFilterOpen(false);
-    setFilterFrom("");
-    setFilterTo("");
-    setFilterError(false);
-  }
-
-  const rangeActive = rangeStart !== null && rangeEnd !== null;
-
   return (
     <div className="flex flex-1 w-full h-full relative overflow-hidden">
       {/*
@@ -592,81 +541,8 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
         </div>
       )}
 
-      {/* Year range filter — bottom center */}
-      {loaded && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center">
-          {rangeActive ? (
-            /* Active range badge */
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full
-                            bg-no-panel/90 border border-no-blue/30 backdrop-blur-sm shadow-sm">
-              <span className="text-no-blue/90 text-[12px] font-mono whitespace-nowrap">
-                {fmt(rangeStart!)} — {fmt(rangeEnd!)}
-              </span>
-              <button
-                onClick={clearRange}
-                className="text-no-muted/50 hover:text-no-muted transition-colors"
-                title="Clear year filter"
-              >
-                <X size={10} />
-              </button>
-            </div>
-          ) : filterOpen ? (
-            /* Year input form */
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl
-                            bg-no-panel/95 border border-no-border/70 backdrop-blur-sm shadow-lg">
-              <input
-                autoFocus
-                type="text"
-                value={filterFrom}
-                onChange={(e) => {setFilterFrom(e.target.value); setFilterError(false);}}
-                onKeyDown={(e) => e.key === "Enter" && applyFilter()}
-                placeholder={fmt(-500)}
-                className={`w-[88px] bg-transparent text-no-text text-[12px] font-mono
-                            placeholder:text-no-muted/40 focus:outline-none
-                            ${filterError ? "text-red-400 placeholder:text-red-400/40" : ""}`}
-              />
-              <span className="text-no-muted/40 text-[11px] shrink-0">→</span>
-              <input
-                type="text"
-                value={filterTo}
-                onChange={(e) => {setFilterTo(e.target.value); setFilterError(false);}}
-                onKeyDown={(e) => e.key === "Enter" && applyFilter()}
-                placeholder={fmt(475)}
-                className={`w-[88px] bg-transparent text-no-text text-[12px] font-mono
-                            placeholder:text-no-muted/40 focus:outline-none
-                            ${filterError ? "text-red-400 placeholder:text-red-400/40" : ""}`}
-              />
-              <button
-                onClick={applyFilter}
-                disabled={!filterFrom.trim() || !filterTo.trim()}
-                className="px-2.5 py-0.5 rounded-md bg-no-blue/90 hover:bg-no-blue
-                           disabled:opacity-40 disabled:cursor-not-allowed
-                           text-no-blue-fg text-[11px] font-medium transition-colors shrink-0"
-              >
-                Apply
-              </button>
-              <button
-                onClick={() => {setFilterOpen(false); setFilterFrom(""); setFilterTo(""); setFilterError(false);}}
-                className="text-no-muted/40 hover:text-no-muted transition-colors shrink-0"
-              >
-                <X size={10} />
-              </button>
-            </div>
-          ) : (
-            /* Inactive trigger */
-            <button
-              onClick={() => setFilterOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full
-                         bg-no-panel/80 border border-no-border/50 backdrop-blur-sm shadow-sm
-                         text-no-text/80 text-[12px] hover:text-no-text hover:border-no-border
-                         transition-colors"
-            >
-              <Clock size={11} />
-              <span>Year filter</span>
-            </button>
-          )}
-        </div>
-      )}
+      {/* Time slider — always visible once map tiles are loaded */}
+      {loaded && <TimeSlider />}
 
       {/* Loading overlay — stays until all tiles have rendered, then fades out */}
       <AnimatePresence>
