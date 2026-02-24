@@ -11,13 +11,15 @@ import { getTimelineColor, alphaColor } from "@/utils/timelineColors";
 
 interface NoteCardProps {
   note: Note;
+  /** Show the map-pin icon even when note.lat is null (e.g. event annotation whose source event has coords). */
+  hasLocation?: boolean;
 }
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export function NoteCard({ note }: NoteCardProps) {
+export function NoteCard({ note, hasLocation }: NoteCardProps) {
   const openDrawer   = useNotesStore((s) => s.openDrawer);
   const timelines    = useNotesStore((s) => s.timelines);
   const fmt          = useFormatYear();
@@ -45,7 +47,7 @@ export function NoteCard({ note }: NoteCardProps) {
           {note.linkedNoteId && (
             <span className="text-[9px] text-no-blue/70 font-mono" title="Linked note">↔</span>
           )}
-          {note.lat != null && (
+          {(hasLocation ?? note.lat != null) && (
             <span title="Has map location" className="flex items-center shrink-0">
               <MapPin size={9} className="text-no-blue/55" />
             </span>

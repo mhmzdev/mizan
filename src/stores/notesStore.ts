@@ -187,8 +187,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       editingNoteId: noteId ?? null,
       pendingTitle: title ?? "",
       pendingSourceEvent: sourceEvent ?? null,
-      pendingLat: pendingLat ?? null,
-      pendingLng: pendingLng ?? null,
+      pendingLat: pendingLat ?? sourceEvent?.lat ?? null,
+      pendingLng: pendingLng ?? sourceEvent?.lng ?? null,
     });
   },
 

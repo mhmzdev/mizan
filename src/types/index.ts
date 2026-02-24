@@ -38,6 +38,8 @@ export interface TimelineEvent {
   title: string;
   description?: string;
   track: "global" | "personal";
+  lat?: number;
+  lng?: number;
 }
 
 export interface Track {

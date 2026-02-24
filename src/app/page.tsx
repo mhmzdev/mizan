@@ -366,7 +366,7 @@ export default function Home() {
         {/* Timeline / Map — takes all remaining space */}
         <div data-tour="tour-timeline" className="flex flex-1 min-w-0 overflow-hidden">
           {viewMode === "map"
-            ? <MapView />
+            ? <MapView events={events} />
             : <TimelineContainer eventsByYear={eventsByYear} />
           }
         </div>

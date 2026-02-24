@@ -9,7 +9,7 @@ import {useNotesStore} from "@/stores/notesStore";
 import {useMapStore} from "@/stores/mapStore";
 import {useTimelineStore} from "@/stores/timelineStore";
 import {useFormatYear} from "@/hooks/useFormatYear";
-import {Note, Timeline} from "@/types";
+import {Note, Timeline, TimelineEvent} from "@/types";
 import {YEAR_START, YEAR_END} from "@/utils/constants";
 
 function parseYearInput(raw: string): number | null {
@@ -55,12 +55,10 @@ function getMapStyle(isDark: boolean): string {
   }
   // Tier 2 — MapTiler (fast CDN, clean dark style, set NEXT_PUBLIC_MAPTILER_KEY)
   if (MAPTILER_KEY) {
-    console.log("Using MapTiler basemaps");
     return isDark
       ? `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`
       : `https://api.maptiler.com/maps/dataviz/style.json?key=${MAPTILER_KEY}`;
   }
-  console.log("Using CARTO basemaps");
   // Tier 3 — CARTO free basemaps (no key required, slower shared CDN)
   return isDark
     ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
@@ -129,7 +127,39 @@ function buildGeoJSON(
   return {type: "FeatureCollection", features};
 }
 
-export default function MapView() {
+function buildEventsGeoJSON(
+  events: TimelineEvent[],
+  timelines: Timeline[],
+  panelSearch: string,
+  panelTimelineId: number | null,
+): GeoJSON.FeatureCollection {
+  // Find the global-history timeline; fall back to the earliest default if eventTrack wasn't persisted
+  const globalTl = timelines.find((t) => t.eventTrack === "global")
+    ?? timelines.filter((t) => t.isDefault).sort((a, b) => a.createdAt - b.createdAt)[0];
+  // If the global-history timeline is hidden, suppress all event pins
+  if (globalTl?.hidden) return {type: "FeatureCollection", features: []};
+  // If the panel is filtered to a specific (non-global) timeline, suppress event pins
+  if (panelTimelineId !== null && panelTimelineId !== globalTl?.id) {
+    return {type: "FeatureCollection", features: []};
+  }
+
+  const query = panelSearch.trim().toLowerCase();
+  const globalIdx = globalTl ? timelines.indexOf(globalTl) : -1;
+  const color = globalIdx >= 0 ? resolveTimelineColor(globalIdx) : "#74A0FF";
+
+  const features: GeoJSON.Feature[] = events
+    .filter((ev) => ev.lat != null && ev.lng != null)
+    .filter((ev) => !query || ev.title.toLowerCase().includes(query))
+    .map((ev) => ({
+      type: "Feature" as const,
+      geometry: {type: "Point" as const, coordinates: [ev.lng!, ev.lat!]},
+      properties: {eventId: ev.id, year: ev.year, title: ev.title, color},
+    }));
+
+  return {type: "FeatureCollection", features};
+}
+
+export default function MapView({events}: {events: TimelineEvent[]}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const previewMarkerRef = useRef<maplibregl.Marker | null>(null);
@@ -150,10 +180,12 @@ export default function MapView() {
   const timelinesRef = useRef(timelines);
   const panelSearchRef = useRef(panelSearch);
   const panelTimelineIdRef = useRef(panelTimelineId);
+  const eventsRef = useRef(events);
   notesRef.current = notes;
   timelinesRef.current = timelines;
   panelSearchRef.current = panelSearch;
   panelTimelineIdRef.current = panelTimelineId;
+  eventsRef.current = events;
 
   const mapCenter = useMapStore((s) => s.mapCenter);
   const mapZoom = useMapStore((s) => s.mapZoom);
@@ -163,7 +195,8 @@ export default function MapView() {
   const locationPickMode = useMapStore((s) => s.locationPickMode);
 
   const editingNoteId = useNotesStore((s) => s.editingNoteId);
-  const drawerOpen    = useNotesStore((s) => s.drawerOpen);
+  const drawerOpen = useNotesStore((s) => s.drawerOpen);
+  const pendingSourceEvent = useNotesStore((s) => s.pendingSourceEvent);
 
   const rangeStart = useTimelineStore((s) => s.rangeStart);
   const rangeEnd = useTimelineStore((s) => s.rangeEnd);
@@ -209,18 +242,59 @@ export default function MapView() {
     }
   }
 
+  /** Add the events GeoJSON source + layer (call once per style load). */
+  function addEventsSource(map: maplibregl.Map) {
+    if (map.getSource("events")) return;
+
+    map.addSource("events", {
+      type: "geojson",
+      data: buildEventsGeoJSON(eventsRef.current, timelinesRef.current, panelSearchRef.current, panelTimelineIdRef.current),
+    });
+
+    // Slightly smaller than user-note circles so notes visually dominate
+    map.addLayer({
+      id: "events-circles",
+      type: "circle",
+      source: "events",
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 3, 10, 6, 16, 10],
+        "circle-color": ["get", "color"],
+        "circle-opacity": 0.75,
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-opacity": 0.4,
+      },
+    });
+
+    // Re-apply range filter if already active
+    if (rangeStartRef.current !== null && rangeEndRef.current !== null) {
+      map.setFilter("events-circles", [
+        "all",
+        [">=", ["get", "year"], rangeStartRef.current],
+        ["<=", ["get", "year"], rangeEndRef.current],
+      ]);
+    }
+  }
+
   // ── Map initialisation — runs once on mount ─────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const el = containerRef.current;
+
     const map = new maplibregl.Map({
-      container: containerRef.current,
+      container: el,
       style: getMapStyle(isDarkTheme()),
       center: [mapCenter.lng, mapCenter.lat],
       zoom: mapZoom,
     });
 
     mapRef.current = map;
+
+    // ResizeObserver: fires whenever the container gets real dimensions, even if
+    // the flex layout hasn't settled by the time the useEffect first runs.
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(el);
 
     // Persist camera position
     map.on("move", () => {
@@ -231,12 +305,23 @@ export default function MapView() {
 
     // Initial style loaded: add notes layer + interaction handlers
     map.on("load", () => {
-      // Ensure MapLibre knows the container's real dimensions before issuing
-      // tile requests (guards against zero-size container on first mount).
-      map.resize();
       // Darken tiles in dark mode — applied directly to canvas so DOM markers stay bright
       map.getCanvas().style.filter = isDarkTheme() ? "brightness(0.75)" : "";
       addNotesSource(map);
+      addEventsSource(map);
+
+      // "Go to map" case: map mounts while a note is already open.
+      // The reactive flyTo effect fires before mapRef is set, so we check here.
+      const {editingNoteId: eid, drawerOpen: dOpen, notes: ns} = useNotesStore.getState();
+      if (dOpen && eid != null) {
+        const n = ns.find((n) => n.id === eid);
+        const ev = n?.sourceEventId ? eventsRef.current.find((e) => e.id === n.sourceEventId) : null;
+        const lat = n?.lat ?? ev?.lat;
+        const lng = n?.lng ?? ev?.lng;
+        if (lat != null && lng != null) {
+          map.flyTo({center: [lng, lat], zoom: Math.max(map.getZoom(), 10), duration: 600, essential: true});
+        }
+      }
 
       // Hide loader only once all visible tiles are actually rendered
       waitForTiles(map, () => setLoaded(true));
@@ -284,11 +369,12 @@ export default function MapView() {
         }
         // Guard: layer may be absent briefly during setStyle() reloads
         if (!map.getLayer("notes-circles")) {map.getCanvas().style.cursor = ""; return;}
-        const f = map.queryRenderedFeatures(e.point, {layers: ["notes-circles"]});
+        const activeLayers = ["notes-circles", map.getLayer("events-circles") ? "events-circles" : ""].filter(Boolean);
+        const f = map.queryRenderedFeatures(e.point, {layers: activeLayers});
         map.getCanvas().style.cursor = f.length > 0 ? "pointer" : "";
       });
 
-      // Click: pick-mode → assign location; pin → open note (glow); empty → no action
+      // Click: pick-mode → assign location; note pin → open drawer; event pin → annotation drawer
       map.on("click", (e) => {
         if (longPressFired) {longPressFired = false; return;}
 
@@ -303,12 +389,37 @@ export default function MapView() {
 
         // Guard: layer may be absent briefly during setStyle() reloads
         if (!map.getLayer("notes-circles")) return;
-        const features = map.queryRenderedFeatures(e.point, {layers: ["notes-circles"]});
-        if (features.length > 0) {
-          const noteId = Number(features[0].properties.noteId);
-          const year   = Number(features[0].properties.year);
+
+        // User notes take priority over event dots
+        const noteFeatures = map.queryRenderedFeatures(e.point, {layers: ["notes-circles"]});
+        if (noteFeatures.length > 0) {
+          const noteId = Number(noteFeatures[0].properties.noteId);
+          const year = Number(noteFeatures[0].properties.year);
           useNotesStore.getState().openDrawer(year, noteId);
           return;
+        }
+
+        // Historical event dots — fly to + open annotation drawer
+        if (map.getLayer("events-circles")) {
+          const evFeatures = map.queryRenderedFeatures(e.point, {layers: ["events-circles"]});
+          if (evFeatures.length > 0) {
+            const eventId = String(evFeatures[0].properties.eventId);
+            const year = Number(evFeatures[0].properties.year);
+            const title = String(evFeatures[0].properties.title);
+            const ev = eventsRef.current.find((ev) => ev.id === eventId);
+            if (ev) {
+              if (ev.lat != null && ev.lng != null) {
+                map.flyTo({
+                  center: [ev.lng, ev.lat],
+                  zoom: Math.max(map.getZoom(), 10),
+                  duration: 600,
+                  essential: true,
+                });
+              }
+              useNotesStore.getState().openDrawer(year, undefined, title, ev);
+            }
+            return;
+          }
         }
         // Empty area single tap — no action; user must long press to add note
       });
@@ -332,6 +443,7 @@ export default function MapView() {
         // Darken tiles on canvas only — DOM markers are unaffected
         mapRef.current.getCanvas().style.filter = dark ? "brightness(0.75)" : "";
         addNotesSource(mapRef.current);
+        addEventsSource(mapRef.current);
         waitForTiles(mapRef.current, () => setLoaded(true));
       };
 
@@ -346,6 +458,7 @@ export default function MapView() {
     });
 
     return () => {
+      ro.disconnect();
       observer.disconnect();
       map.remove();
       mapRef.current = null;
@@ -361,30 +474,49 @@ export default function MapView() {
       ?.setData(buildGeoJSON(notes, timelines, panelSearch, panelTimelineId));
   }, [notes, timelines, panelSearch, panelTimelineId]);
 
-  // ── Reactive: apply year-range filter ────────────────────────────────────
+  // ── Reactive: apply year-range filter to both notes and events ───────────
   useEffect(() => {
     if (!mapRef.current?.isStyleLoaded()) return;
-    if (!mapRef.current.getLayer("notes-circles")) return;
-    mapRef.current.setFilter(
-      "notes-circles",
-      rangeStart !== null && rangeEnd !== null
-        ? ["all", [">=", ["get", "year"], rangeStart], ["<=", ["get", "year"], rangeEnd]]
-        : null
-    );
+    const filter = (rangeStart !== null && rangeEnd !== null
+      ? ["all", [">=", ["get", "year"], rangeStart], ["<=", ["get", "year"], rangeEnd]]
+      : null) as maplibregl.FilterSpecification | null;
+    if (mapRef.current.getLayer("notes-circles")) mapRef.current.setFilter("notes-circles", filter);
+    if (mapRef.current.getLayer("events-circles")) mapRef.current.setFilter("events-circles", filter);
   }, [rangeStart, rangeEnd]);
 
-  // ── Reactive: fly to note when opened from the notes panel ────────────────
+  // ── Reactive: update events GeoJSON when events, timelines, or panel filters change ──
   useEffect(() => {
-    if (!drawerOpen || editingNoteId == null || !mapRef.current) return;
-    const note = useNotesStore.getState().notes.find((n) => n.id === editingNoteId);
-    if (note?.lat == null || note?.lng == null) return;
+    if (!mapRef.current?.isStyleLoaded()) return;
+    (mapRef.current.getSource("events") as GeoJSONSource | undefined)
+      ?.setData(buildEventsGeoJSON(events, timelines, panelSearch, panelTimelineId));
+  }, [events, timelines, panelSearch, panelTimelineId]);
+
+  // ── Reactive: fly to note/event when drawer opens ────────────────────────
+  useEffect(() => {
+    if (!drawerOpen || !mapRef.current) return;
+    let lat: number | undefined;
+    let lng: number | undefined;
+
+    if (editingNoteId != null) {
+      // Editing an existing note — use its coords or fall back to source event
+      const note = useNotesStore.getState().notes.find((n) => n.id === editingNoteId);
+      const ev = note?.sourceEventId ? eventsRef.current.find((e) => e.id === note.sourceEventId) : null;
+      lat = note?.lat ?? ev?.lat;
+      lng = note?.lng ?? ev?.lng;
+    } else if (pendingSourceEvent?.lat != null && pendingSourceEvent?.lng != null) {
+      // Annotation mode from a historical event card — fly to the event location
+      lat = pendingSourceEvent.lat;
+      lng = pendingSourceEvent.lng;
+    }
+
+    if (lat == null || lng == null) return;
     mapRef.current.flyTo({
-      center: [note.lng, note.lat],
+      center: [lng, lat],
       zoom: Math.max(mapRef.current.getZoom(), 10),
       duration: 600,
       essential: true,
     });
-  }, [editingNoteId, drawerOpen]);
+  }, [editingNoteId, drawerOpen, pendingSourceEvent]);
 
   // ── Reactive: preview pin ────────────────────────────────────────────────
   useEffect(() => {
@@ -431,10 +563,16 @@ export default function MapView() {
 
   return (
     <div className="flex flex-1 w-full h-full relative overflow-hidden">
-      <div
-        ref={containerRef}
-        className="absolute inset-0"
-      />
+      {/*
+        MapLibre's constructor sets `position: relative` as an inline style on its
+        container element, which would break `absolute inset-0` positioning and
+        collapse the container to 0-width.  Fix: keep the absolute-positioned
+        wrapper separate; give MapLibre a plain `w-full h-full` child so that
+        `width/height: 100%` still resolves correctly after MapLibre overrides position.
+      */}
+      <div className="absolute inset-0">
+        <div ref={containerRef} className="w-full h-full" />
+      </div>
 
       {/* Map hint — pick-mode instruction or long-press guide */}
       {loaded && (

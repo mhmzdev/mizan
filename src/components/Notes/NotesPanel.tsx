@@ -62,13 +62,22 @@ export function NotesPanel({ events }: NotesPanelProps) {
     .filter((n) => !rangeActive || (n.year >= rangeStart! && n.year <= rangeEnd!))
     .filter((n) => !query || n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query));
 
+  // Global timeline — used to decide whether event results should be shown
+  // Fall back to the earliest default timeline if eventTrack was not persisted
+  const globalTl = timelines.find((t) => t.eventTrack === "global")
+    ?? timelines.filter((t) => t.isDefault).sort((a, b) => a.createdAt - b.createdAt)[0];
+  const globalHidden = globalTl?.hidden === true;
+  const globalMatchesFilter = selectedTimelineId === null || selectedTimelineId === globalTl?.id;
+
   // Global events shown only during search, pinned at top
+  // Hidden if the global-history timeline is toggled off or filtered out
   const matchedEvents = useMemo(() => {
-    if (!query) return [];
+    if (!query || globalHidden || !globalMatchesFilter) return [];
     return events
       .filter((ev) => ev.title.toLowerCase().includes(query))
       .slice(0, MAX_EVENT_RESULTS);
-  }, [query, events]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, events, globalHidden, globalMatchesFilter]);
 
   const viewMode = useMapStore((s) => s.viewMode);
   const visibleNotes = notes.filter((n) => !hiddenIds.has(n.timelineId));
@@ -242,16 +251,25 @@ export function NotesPanel({ events }: NotesPanelProps) {
                 <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-no-blue/60" />
                 <div className="flex items-center justify-between gap-1 mb-1.5">
                   <span className="text-no-gold/80 text-[12px] font-mono">{fmt(ev.year)}</span>
-                  <span className="text-[9px] uppercase tracking-wide font-medium text-no-blue/50">Historical</span>
+                  <div className="flex items-center gap-1.5">
+                    {ev.lat != null && (
+                      <span title="Has map location" className="flex items-center">
+                        <MapPin size={9} className="text-no-blue/55" />
+                      </span>
+                    )}
+                    <span className="text-[9px] uppercase tracking-wide font-medium text-no-blue/50">Historical</span>
+                  </div>
                 </div>
                 <div className="text-no-text/90 text-xs font-medium leading-snug truncate">{ev.title}</div>
               </button>
             ))}
 
             {/* User notes */}
-            {filtered.map((note) => (
-              <NoteCard key={note.id} note={note} />
-            ))}
+            {filtered.map((note) => {
+              const srcEvent = note.sourceEventId ? events.find((e) => e.id === note.sourceEventId) : null;
+              const hasLocation = note.lat != null || srcEvent?.lat != null;
+              return <NoteCard key={note.id} note={note} hasLocation={hasLocation} />;
+            })}
 
             {isFiltered && filtered.length > 0 && (
               <p className="text-no-muted/35 text-[12px] text-center py-1">
