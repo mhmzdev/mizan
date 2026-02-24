@@ -550,9 +550,12 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
               Click anywhere on the map to set location
             </div>
           ) : (
-            <div className="bg-no-panel/70 border border-no-border/50 rounded-full px-3 py-1.5
-                            text-no-text/80 text-[11px] font-mono tracking-wide select-none
-                            backdrop-blur-sm shadow-sm">
+            <div
+              data-tour="tour-map-hint"
+              className="bg-no-panel/70 border border-no-border/50 rounded-full px-3 py-1.5
+                         text-no-text/80 text-[11px] font-mono tracking-wide select-none
+                         backdrop-blur-sm shadow-sm"
+            >
               Long press to add note
             </div>
           )}

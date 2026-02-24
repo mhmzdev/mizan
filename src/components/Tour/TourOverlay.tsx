@@ -2,31 +2,47 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTourStore, TOUR_DONE_KEY, TOUR_STEPS } from "@/stores/tourStore";
+import { useTourStore, TOUR_DONE_KEY, MAP_TOUR_DONE_KEY, TOUR_STEPS, MAP_TOUR_STEPS } from "@/stores/tourStore";
+import { useMapStore } from "@/stores/mapStore";
 
 interface Rect { x: number; y: number; width: number; height: number; }
 
-const CARD_W   = 340;
-const PAD      = 12;   // spotlight padding around target element
+const CARD_W = 340;
+const PAD    = 12;   // spotlight padding around target element
 
 const STEPS = [
   {
-    target:  "tour-timeline",
-    title:   "Navigate the Timeline",
-    body:    "Scroll to zoom between centuries and individual years. Hold ⇧ Shift while scrolling to pan. Press 1, 2, or 3 to jump between zoom levels instantly.",
-    cta:     "Next",
+    target: "tour-timeline",
+    title:  "Navigate the Timeline",
+    body:   "Scroll to zoom between centuries and individual years. Hold ⇧ Shift while scrolling to pan. Press 1, 2, or 3 to jump between zoom levels instantly.",
+    cta:    "Next",
   },
   {
-    target:  "tour-sidebar",
-    title:   "Create a Timeline",
-    body:    "Timelines organize your notes by category. Click + in the Timelines section to add one — each gets its own color and can be hidden anytime.",
-    cta:     "Next",
+    target: "tour-sidebar",
+    title:  "Create a Timeline",
+    body:   "Timelines organize your notes by category. Click + in the Timelines section to add one — each gets its own color and can be hidden anytime.",
+    cta:    "Next",
   },
   {
-    target:  "tour-notes",
-    title:   "Add a Note",
-    body:    "Click + in the notes panel to create a note at any year. Notes support rich text, markdown links, and can be deep-linked back to this exact view.",
-    cta:     "Got it!",
+    target: "tour-notes",
+    title:  "Add a Note",
+    body:   "Click + in the notes panel to create a note at any year. Notes support rich text, markdown links, and can be deep-linked back to this exact view.",
+    cta:    "Got it!",
+  },
+] as const;
+
+const MAP_STEPS = [
+  {
+    target: "tour-time-slider",
+    title:  "Time Slider",
+    body:   "Drag the handles to set your time window — only notes and events within the range appear as pins. Drag the hatched region between them to pan the whole window without resizing it.",
+    cta:    "Next",
+  },
+  {
+    target: "tour-map-hint",
+    title:  "Add Notes on the Map",
+    body:   "Long-press anywhere on the map to drop a note at that exact location. Coordinates are pre-filled automatically.",
+    cta:    "Got it!",
   },
 ] as const;
 
@@ -34,7 +50,7 @@ const STEPS = [
 function getTooltipPos(rect: Rect, cardH: number): { x: number; y: number } {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const M  = 20; // margin from spotlight / viewport edge
+  const M  = 20;
 
   const sx = rect.x - PAD;
   const sy = rect.y - PAD;
@@ -61,25 +77,28 @@ function getTooltipPos(rect: Rect, cardH: number): { x: number; y: number } {
     x = sx + sw + M;
     y = sy + sh / 2 - cardH / 2;
   } else {
-    // Fallback: lower-center of the highlighted area
     x = sx + sw / 2 - CARD_W / 2;
     y = sy + sh * 0.55;
   }
 
-  // Clamp to viewport
   x = Math.max(M, Math.min(vw - CARD_W - M, x));
   y = Math.max(M, Math.min(vh - cardH   - M, y));
   return { x, y };
 }
 
 export function TourOverlay() {
-  const { active, step, next, skip } = useTourStore();
+  const {
+    active, step, next, skip,
+    mapTourActive, mapTourStep, nextMapTour, skipMapTour,
+  } = useTourStore();
+
+  const viewMode = useMapStore((s) => s.viewMode);
 
   const [rect,  setRect]  = useState<Rect | null>(null);
   const [cardH, setCardH] = useState(200);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Auto-start on very first visit
+  // ── Auto-start main tour on very first visit ─────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!localStorage.getItem(TOUR_DONE_KEY)) {
@@ -88,15 +107,43 @@ export function TourOverlay() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Measure card height after each render so positioning stays accurate
+  // ── Auto-start map tour on first visit to map view ───────────────────────
+  // Waits until the main tour is done and the user enters map view.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (viewMode !== "map") return;
+    if (active) return;                                 // main tour still running
+    if (localStorage.getItem(MAP_TOUR_DONE_KEY)) return; // already seen
+    const t = setTimeout(() => {
+      // Re-check in case state changed while timer was pending
+      if (!useTourStore.getState().active && !localStorage.getItem(MAP_TOUR_DONE_KEY)) {
+        useTourStore.getState().startMapTour();
+      }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [viewMode, active]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Resolve which tour is currently rendering ────────────────────────────
+  const showMapTour  = mapTourActive;
+  const showMainTour = active && !mapTourActive;
+  const anyActive    = showMainTour || showMapTour;
+
+  const curStep    = showMapTour ? mapTourStep  : step;
+  const curTotal   = showMapTour ? MAP_TOUR_STEPS : TOUR_STEPS;
+  const curSteps   = showMapTour ? MAP_STEPS    : STEPS;
+  const handleNext = showMapTour ? nextMapTour  : next;
+  const handleSkip = showMapTour ? skipMapTour  : skip;
+  const s          = curSteps[curStep as number];
+
+  // ── Measure card height for positioning ─────────────────────────────────
   useEffect(() => {
     if (cardRef.current) setCardH(cardRef.current.offsetHeight);
   });
 
-  // Locate the target element (retries until it appears with valid dimensions)
+  // ── Locate target element (retries until it appears with valid dimensions) ──
   const findTarget = useCallback(() => {
-    if (!active) { setRect(null); return; }
-    const target = STEPS[step]?.target;
+    if (!anyActive) { setRect(null); return; }
+    const target = (showMapTour ? MAP_STEPS[mapTourStep] : STEPS[step as 0 | 1 | 2])?.target;
     if (!target) return;
 
     setRect(null);
@@ -117,7 +164,7 @@ export function TourOverlay() {
 
     timerId = setTimeout(tryFind, 80);
     return () => clearTimeout(timerId);
-  }, [active, step]);
+  }, [anyActive, showMapTour, mapTourStep, step]);
 
   useEffect(() => {
     const cleanup = findTarget();
@@ -126,12 +173,10 @@ export function TourOverlay() {
     return () => { cleanup?.(); window.removeEventListener("resize", onResize); };
   }, [findTarget]);
 
-  if (!active) return null;
+  if (!anyActive) return null;
 
-  const s  = STEPS[step];
   const hasSpot = rect !== null;
 
-  // Spotlight box (with padding)
   const sx = hasSpot ? rect!.x - PAD : 0;
   const sy = hasSpot ? rect!.y - PAD : 0;
   const sw = hasSpot ? rect!.width  + PAD * 2 : 0;
@@ -171,7 +216,7 @@ export function TourOverlay() {
           mask="url(#tour-cutout)"
         />
 
-        {/* Accent ring around spotlight */}
+        {/* Accent ring */}
         {hasSpot && (
           <motion.rect
             animate={{ x: sx, y: sy, width: sw, height: sh }}
@@ -187,7 +232,7 @@ export function TourOverlay() {
       {/* ── Tooltip card ── */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={step}
+          key={`${showMapTour ? "map" : "main"}-${curStep}`}
           ref={cardRef}
           initial={{ opacity: 0, y: 8, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -203,12 +248,12 @@ export function TourOverlay() {
         >
           {/* Step progress dots */}
           <div className="flex gap-1.5 px-5 pt-4">
-            {Array.from({ length: TOUR_STEPS }).map((_, i) => (
+            {Array.from({ length: curTotal }).map((_, i) => (
               <div
                 key={i}
                 className={`h-[2px] flex-1 rounded-full transition-all duration-400 ${
-                  i < step  ? "bg-no-blue"
-                  : i === step ? "bg-no-blue/60"
+                  i < curStep  ? "bg-no-blue"
+                  : i === curStep ? "bg-no-blue/60"
                   : "bg-no-border"
                 }`}
               />
@@ -221,7 +266,7 @@ export function TourOverlay() {
               {s.title}
             </div>
             <div className="text-no-muted/60 text-[10px] uppercase tracking-[0.12em] mb-3">
-              Step {step + 1} of {TOUR_STEPS}
+              Step {curStep + 1} of {curTotal}
             </div>
             <div className="text-no-muted text-[13px] leading-relaxed mb-5">
               {s.body}
@@ -230,13 +275,13 @@ export function TourOverlay() {
             {/* Actions */}
             <div className="flex items-center justify-between">
               <button
-                onClick={skip}
+                onClick={handleSkip}
                 className="text-no-muted/45 hover:text-no-muted text-[12px] transition-colors"
               >
                 Skip tour
               </button>
               <button
-                onClick={next}
+                onClick={handleNext}
                 className="bg-no-blue hover:bg-no-blue-dim text-no-blue-fg text-[13px] font-semibold px-5 py-2 rounded-lg transition-colors"
               >
                 {s.cta}

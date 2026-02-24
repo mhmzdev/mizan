@@ -132,6 +132,7 @@ export function TimeSlider() {
       {/* Glassmorphism track bar */}
       <div
         ref={trackRef}
+        data-tour="tour-time-slider"
         className="relative h-10 rounded-xl overflow-hidden
                    bg-no-panel/75 backdrop-blur-md
                    border border-white/10
