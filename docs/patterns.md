@@ -146,9 +146,45 @@ Reference: `src/stores/dialogStore.ts`, `src/components/ui/ConfirmDialog.tsx`
 
 ---
 
+## Displaying Years
+
+**Always use `useFormatYear()`** from `src/hooks/useFormatYear.ts` in components — never call `formatYear` directly. It reads the user's notation setting from `settingsStore` automatically.
+
+```ts
+import { useFormatYear } from "@/hooks/useFormatYear";
+
+const formatYear = useFormatYear();
+// → respects user's BC/AD | BCE/CE | BH/AH preference
+return <span>{formatYear(note.year)}</span>;
+```
+
+For one-off formatting outside React (e.g. exported data), call `formatYear(year)` from `src/utils/yearUtils.ts` directly with the explicit notation.
+
+---
+
 ## Year Input Parsing
 
-Users type years like `"500 BC"`, `"1066 AD"`, or `"-44"`. Use the module-level `parseYear` function already in `src/components/Sidebar/Sidebar.tsx` when adding any new year input. It handles BC/AD suffixes and clamps to `[YEAR_START, YEAR_END]`.
+Users type years in any active notation (`"500 BC"`, `"500 BCE"`, `"1066 AD"`, `"-44"`). The universal `parseYear` helper (in `src/components/Sidebar/Sidebar.tsx`) accepts all suffix variants regardless of the current notation setting — always use it for new year inputs. It clamps to `[YEAR_START, YEAR_END]`.
+
+---
+
+## Soft Delete (Undo Toast)
+
+Note and timeline deletions are soft — the record is removed from DB immediately but stashed in `notesStore.pendingDelete`. A toast gives the user a brief window to undo.
+
+```ts
+// Deleting a note example (notesStore handles the stash internally):
+await deleteNote(id);
+// → DB row deleted, pendingDelete = { type: "note", note }
+
+// User clicks Undo:
+await undoDelete(); // re-inserts stashed record
+
+// Toast dismissed without undo:
+commitDelete();     // clears pendingDelete, no DB write
+```
+
+Never call `db.notes.delete()` directly from a component — always use the store action so the undo stash is populated correctly.
 
 ---
 

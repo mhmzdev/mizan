@@ -5,7 +5,7 @@ A local-first historical timeline (4001 BC → 2026 AD) for navigating and annot
 ## Stack
 - **Next.js 15** App Router, `src/` dir, `@/*` alias
 - **Tailwind CSS v4** — custom theme via `@theme` in `globals.css`
-- **Zustand 5** — all UI state (`timelineStore`, `notesStore`, `dialogStore`)
+- **Zustand 5** — all UI state (`timelineStore`, `notesStore`, `dialogStore`, `settingsStore`)
 - **Dexie (IndexedDB)** — local note + timeline persistence (`src/lib/db.ts`)
 - **Framer Motion** — panel animations and zoom transitions
 - **Roboto Mono** — sole font (loaded via `next/font/google`, self-hosted at build time)
@@ -23,7 +23,8 @@ npm run build  # must pass before every ship — catches type errors
 Internal representation: integers from `YEAR_START = -4000` (4001 BC) to `YEAR_END = 2025` (2026 AD).
 - `year < 0` → display as `Math.abs(year) + " BC"` (e.g. `-44` → `"44 BC"`)
 - `year >= 0` → display as `(year + 1) + " AD"` (e.g. `0` → `"1 AD"`)
-- Implemented at `src/utils/yearUtils.ts:formatYear`
+- Implemented at `src/utils/yearUtils.ts:formatYear(year, notation?)`
+- **In components always use `useFormatYear()`** from `src/hooks/useFormatYear.ts` — it reads the user's notation setting automatically (BC/AD | BCE/CE | BH/AH)
 
 Pixel position: `px = (year - YEAR_START) * pxPerYear`
 

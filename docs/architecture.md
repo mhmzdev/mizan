@@ -29,15 +29,18 @@ src/
       ModeButton.tsx           # Individual zoom mode button
     ui/
       ConfirmDialog.tsx        # Generic destructive-action confirmation modal
+      ExportImportDialog.tsx   # Export/import notes + timelines as JSON (HardDrive button in header)
 
   stores/
     timelineStore.ts           # Viewport state — see "Stores" below
     notesStore.ts              # Notes + timelines CRUD + drawer state — see "Stores" below
     dialogStore.ts             # Confirm dialog (imperative API: await confirm({...}))
+    settingsStore.ts           # User preferences (notation) — persisted to localStorage
 
   hooks/
     useUrlSync.ts              # URL ↔ store sync; debounced writes + localStorage persistence
     useTheme.ts                # useTheme() hook — toggles data-theme on <html>, persists to mizan_theme
+    useFormatYear.ts           # useFormatYear() — returns formatYear bound to current notation setting
 
   lib/
     db.ts                      # Dexie schema (tables: notes, timelines)
@@ -71,8 +74,9 @@ src/
 | `targetPxPerYear` | `number \| null` | Triggers animated zoom transition |
 | `rangeStart` | `number \| null` | Active date range filter start |
 | `rangeEnd` | `number \| null` | Active date range filter end |
+| `activeInterval` | `{ start: number; end: number } \| null` | Interval overlay shown when a linked note pair is open |
 
-Key actions: `setPxPerYear`, `setScrollLeft`, `setPendingNav`, `setRange`, `clearRange`.
+Key actions: `setPxPerYear`, `setScrollLeft`, `setPendingNav`, `setRange`, `clearRange`, `setActiveInterval`.
 
 ### `notesStore` (`src/stores/notesStore.ts`)
 
@@ -85,8 +89,11 @@ Key actions: `setPxPerYear`, `setScrollLeft`, `setPendingNav`, `setRange`, `clea
 | `selectedYear` | `number` | Year passed to `openDrawer()` |
 | `lastTimelineId` | `number` | Last timeline used in the drawer |
 | `drawerTimelineId` | `number \| null` | Timeline selected inside the open drawer (drives track highlight) |
+| `pendingTitle` | `string` | Pre-filled title when opening drawer from a global event dot |
+| `pendingSourceEvent` | `TimelineEvent \| null` | Full event object when opening from a global event (annotation mode) |
+| `pendingDelete` | `PendingDelete \| null` | Stashed note/timeline for undo toast; `null` = nothing pending |
 
-Key actions: `openDrawer(year, noteId?)`, `closeDrawer()`, `saveNote`, `updateNote`, `deleteNote`, `loadNotes`, `loadTimelines`, `addTimeline`, `renameTimeline`, `deleteTimeline`.
+Key actions: `openDrawer(year, noteId?, title?, sourceEvent?)`, `closeDrawer()`, `saveNote`, `updateNote`, `deleteNote`, `loadNotes`, `loadTimelines`, `addTimeline`, `renameTimeline`, `deleteTimeline`, `toggleTimelineHidden`, `linkNotes`, `unlinkNotes`, `clearBrokenLink`, `importData`, `undoDelete`, `commitDelete`.
 
 ---
 
@@ -110,8 +117,8 @@ page.tsx
 ## Persistence Layers
 
 ### IndexedDB (Dexie — `src/lib/db.ts`)
-- `timelines` table: `{ id, title, isDefault, eventTrack?, createdAt }`
-- `notes` table: `{ id, timelineId, year, title, content, createdAt, updatedAt }`
+- `timelines` table: `{ id, title, isDefault, eventTrack?, hidden?, createdAt }` — schema v2+
+- `notes` table: `{ id, timelineId, year, title, content, sourceEventId?, linkedNoteId?, createdAt, updatedAt }` — schema v4 (indexed: `year, timelineId, sourceEventId, linkedNoteId`)
 
 ### localStorage
 | Key | Value |
@@ -121,6 +128,7 @@ page.tsx
 | `mizan_sidebar_width` | Panel width in px (number) |
 | `mizan_last_timeline_id` | Last selected timeline id (number) |
 | `mizan_theme` | `"dark"` or `"light"` (string) |
+| `mizan_notation` | `"BC/AD"` \| `"BCE/CE"` \| `"BH/AH"` — year display notation |
 
 ### URL params
 | Param | Meaning |

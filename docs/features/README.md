@@ -45,3 +45,12 @@ One file per feature. Write the spec before implementation — it forces clarity
 | Nordic Obsidian theme | Dark `no-*` token system via Tailwind v4 `@theme` |
 | End-of-timeline markers | Visual boundary at 4001 BC and 2026 AD |
 | Active timeline glow | Tick marks glow in timeline color when drawer is open |
+| Loading screen | Blocks UI until initial IndexedDB data is loaded |
+| Histography layer | 7 000 seed events visualized as `EventDot`s (years mode only) |
+| Global event annotation | Open drawer from an `EventDot`; note hides the event dot once saved |
+| Notes panel search | Searches note titles/content + global event titles; highlights matches |
+| Year notation switcher | Per-user BC/AD · BCE/CE · BH/AH (Hijri); persisted to `mizan_notation` |
+| Note linking | Bidirectional note ↔ note link; linked pair shown as interval overlay on timeline |
+| Timeline show/hide | Toggle visibility of a timeline lane without deleting it |
+| Export / Import | Full JSON snapshot of all notes + timelines; `HardDrive` button in header |
+| Undo delete | Toast after deleting a note or timeline; action reverts within the same session |
