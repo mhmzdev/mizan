@@ -28,24 +28,30 @@ function parseUrlParams(): {
   noteId: number | null;
   rangeFrom: number | null;
   rangeTo:   number | null;
+  mapRangeFrom: number | null;
+  mapRangeTo:   number | null;
   view: "map" | "timeline" | null;
 } {
   if (typeof window === "undefined")
-    return { year: null, zoom: null, noteId: null, rangeFrom: null, rangeTo: null, view: null };
+    return { year: null, zoom: null, noteId: null, rangeFrom: null, rangeTo: null, mapRangeFrom: null, mapRangeTo: null, view: null };
   const p = new URLSearchParams(window.location.search);
-  const y  = p.get("year");
-  const z  = p.get("zoom");
-  const n  = p.get("note");
-  const rf = p.get("range_from");
-  const rt = p.get("range_to");
-  const v  = p.get("view");
+  const y   = p.get("year");
+  const z   = p.get("zoom");
+  const n   = p.get("note");
+  const rf  = p.get("range_from");
+  const rt  = p.get("range_to");
+  const mrf = p.get("map_range_from");
+  const mrt = p.get("map_range_to");
+  const v   = p.get("view");
   return {
-    year:      y  !== null ? parseInt(y,  10) : null,
-    zoom:      z  !== null ? parseFloat(z)    : null,
-    noteId:    n  !== null ? parseInt(n,  10) : null,
-    rangeFrom: rf !== null ? parseInt(rf, 10) : null,
-    rangeTo:   rt !== null ? parseInt(rt, 10) : null,
-    view:      (v === "map" || v === "timeline") ? v : null,
+    year:         y   !== null ? parseInt(y,   10) : null,
+    zoom:         z   !== null ? parseFloat(z)     : null,
+    noteId:       n   !== null ? parseInt(n,   10) : null,
+    rangeFrom:    rf  !== null ? parseInt(rf,  10) : null,
+    rangeTo:      rt  !== null ? parseInt(rt,  10) : null,
+    mapRangeFrom: mrf !== null ? parseInt(mrf, 10) : null,
+    mapRangeTo:   mrt !== null ? parseInt(mrt, 10) : null,
+    view:         (v === "map" || v === "timeline") ? v : null,
   };
 }
 
@@ -73,7 +79,7 @@ export function useUrlSync() {
 
   // ── 1. One-time initialisation ─────────────────────────────────────────────
   useEffect(() => {
-    const { year, zoom, noteId, rangeFrom, rangeTo, view } = parseUrlParams();
+    const { year, zoom, noteId, rangeFrom, rangeTo, mapRangeFrom, mapRangeTo, view } = parseUrlParams();
 
     // Restore view mode — URL param takes priority, then localStorage
     if (view !== null) {
@@ -83,6 +89,11 @@ export function useUrlSync() {
       if (saved === "map" || saved === "timeline") {
         useMapStore.getState().setViewMode(saved);
       }
+    }
+
+    // Restore map slider range from URL (overrides localStorage default)
+    if (mapRangeFrom !== null && mapRangeTo !== null) {
+      useMapStore.getState().setMapRange(mapRangeFrom, mapRangeTo);
     }
 
     // ?note= deep links are handled separately in page.tsx after notes load.
@@ -151,8 +162,13 @@ export function useUrlSync() {
           params.set("range_from", String(timeline.rangeStart));
           params.set("range_to",   String(timeline.rangeEnd));
         }
+        // Map slider range — always present, stored separately from timeline range
+        const { mapRangeStart, mapRangeEnd } = useMapStore.getState();
+        params.set("map_range_from", String(mapRangeStart));
+        params.set("map_range_to",   String(mapRangeEnd));
         window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
-        // Persist so the next page load restores this position + range.
+        // Persist timeline position + explicit timeline range to localStorage.
+        // (Map range persists itself via mapStore.setMapRange → localStorage.)
         try {
           const data: Record<string, number> = { year, zoom };
           if (timeline.rangeStart !== null && timeline.rangeEnd !== null) {
@@ -186,9 +202,13 @@ export function useUrlSync() {
       }
     });
 
-    // mapStore: fire when view mode changes
+    // mapStore: fire when view mode or map slider range changes
     const unsubMap = useMapStore.subscribe((state, prev) => {
-      if (state.viewMode !== prev.viewMode) schedule();
+      if (
+        state.viewMode      !== prev.viewMode      ||
+        state.mapRangeStart !== prev.mapRangeStart ||
+        state.mapRangeEnd   !== prev.mapRangeEnd
+      ) schedule();
     });
 
     return () => {

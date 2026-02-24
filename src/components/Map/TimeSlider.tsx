@@ -1,40 +1,35 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import { useTimelineStore } from "@/stores/timelineStore";
+import React, { useRef } from "react";
+import { useMapStore } from "@/stores/mapStore";
 import { useFormatYear } from "@/hooks/useFormatYear";
 import { YEAR_START, YEAR_END } from "@/utils/constants";
 
-/** Default 200-year window centred on 1 BC/AD */
-const DEFAULT_START = -100;
-const DEFAULT_END   = 99;
-const TOTAL_YEARS   = YEAR_END - YEAR_START;
+const TOTAL_YEARS = YEAR_END - YEAR_START;
+
+type DragMode = "left" | "right" | "center" | null;
 
 export function TimeSlider() {
-  const rangeStart = useTimelineStore((s) => s.rangeStart);
-  const rangeEnd   = useTimelineStore((s) => s.rangeEnd);
-  const setRange   = useTimelineStore((s) => s.setRange);
-  const fmt        = useFormatYear();
+  const start    = useMapStore((s) => s.mapRangeStart);
+  const end      = useMapStore((s) => s.mapRangeEnd);
+  const setRange = useMapStore((s) => s.setMapRange);
+  const fmt      = useFormatYear();
 
   const trackRef    = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef<"left" | "right" | null>(null);
+  const draggingRef = useRef<DragMode>(null);
 
-  // Keep refs up-to-date so pointer handlers don't close over stale values
-  const startRef = useRef(rangeStart ?? DEFAULT_START);
-  const endRef   = useRef(rangeEnd   ?? DEFAULT_END);
-  startRef.current = rangeStart ?? DEFAULT_START;
-  endRef.current   = rangeEnd   ?? DEFAULT_END;
+  // Anchor for center-drag: year under the pointer + range snapshot at drag start
+  const centerAnchorRef = useRef<{
+    anchorYear: number;
+    initStart:  number;
+    initEnd:    number;
+  } | null>(null);
 
-  // Initialise default range on first mount if none is active
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (rangeStart === null || rangeEnd === null) {
-      setRange(DEFAULT_START, DEFAULT_END);
-    }
-  }, []);
-
-  const start = rangeStart ?? DEFAULT_START;
-  const end   = rangeEnd   ?? DEFAULT_END;
+  // Always-current refs so pointer handlers never close over stale values
+  const startRef = useRef(start);
+  const endRef   = useRef(end);
+  startRef.current = start;
+  endRef.current   = end;
 
   const yearToPercent = (year: number) =>
     ((year - YEAR_START) / TOTAL_YEARS) * 100;
@@ -49,6 +44,8 @@ export function TimeSlider() {
     return Math.round(YEAR_START + pct * TOTAL_YEARS);
   }
 
+  // ── Thumb handlers ──────────────────────────────────────────────────────────
+
   function handleLeftDown(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault();
     draggingRef.current = "left";
@@ -61,18 +58,49 @@ export function TimeSlider() {
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
+  // ── Center (pan) handler ─────────────────────────────────────────────────
+
+  function handleCenterDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    draggingRef.current = "center";
+    centerAnchorRef.current = {
+      anchorYear: pixelToYear(e.clientX),
+      initStart:  startRef.current,
+      initEnd:    endRef.current,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  // ── Shared move / up ────────────────────────────────────────────────────────
+
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!draggingRef.current) return;
+    const mode = draggingRef.current;
+    if (!mode) return;
+
     const year = pixelToYear(e.clientX);
-    if (draggingRef.current === "left") {
-      setRange(Math.max(YEAR_START, Math.min(year, endRef.current - 1)), endRef.current);
-    } else {
-      setRange(startRef.current, Math.min(YEAR_END, Math.max(year, startRef.current + 1)));
+
+    if (mode === "left") {
+      setRange(
+        Math.max(YEAR_START, Math.min(year, endRef.current - 1)),
+        endRef.current,
+      );
+    } else if (mode === "right") {
+      setRange(
+        startRef.current,
+        Math.min(YEAR_END, Math.max(year, startRef.current + 1)),
+      );
+    } else if (mode === "center" && centerAnchorRef.current) {
+      const { anchorYear, initStart, initEnd } = centerAnchorRef.current;
+      const windowSize = initEnd - initStart;
+      const delta      = year - anchorYear;
+      const newStart   = Math.max(YEAR_START, Math.min(initStart + delta, YEAR_END - windowSize));
+      setRange(newStart, newStart + windowSize);
     }
   }
 
   function handlePointerUp() {
-    draggingRef.current = null;
+    draggingRef.current    = null;
+    centerAnchorRef.current = null;
   }
 
   return (
@@ -112,19 +140,23 @@ export function TimeSlider() {
         {/* Subtle center line */}
         <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-px bg-no-border/40 rounded-full pointer-events-none" />
 
-        {/* Hatched fill between handles */}
+        {/* ── Draggable center region — pans the whole window ── */}
         <div
-          className="absolute top-0 bottom-0 pointer-events-none"
+          className="absolute top-0 bottom-0 z-[5] cursor-grab active:cursor-grabbing touch-none"
           style={{
             left:  `${startPct}%`,
             width: `${endPct - startPct}%`,
           }}
+          onPointerDown={handleCenterDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          aria-label="Drag to pan the time window"
         >
           {/* Tint */}
-          <div className="absolute inset-0 bg-no-blue/10" />
+          <div className="absolute inset-0 bg-no-blue/10 pointer-events-none" />
           {/* Hatch */}
           <svg
-            className="absolute inset-0 w-full h-full"
+            className="absolute inset-0 w-full h-full pointer-events-none"
             preserveAspectRatio="none"
             aria-hidden="true"
           >
@@ -143,7 +175,7 @@ export function TimeSlider() {
           </svg>
         </div>
 
-        {/* Left thumb */}
+        {/* ── Left thumb ── */}
         <div
           className="absolute top-0 bottom-0 z-10 flex items-center justify-center
                      cursor-ew-resize touch-none"
@@ -151,8 +183,8 @@ export function TimeSlider() {
           onPointerDown={handleLeftDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          aria-label="Range start"
           role="slider"
+          aria-label="Range start"
           aria-valuenow={start}
           aria-valuemin={YEAR_START}
           aria-valuemax={end - 1}
@@ -160,7 +192,7 @@ export function TimeSlider() {
           <div className="w-[3px] h-6 rounded-full bg-no-blue/70 hover:bg-no-blue transition-colors shadow-sm" />
         </div>
 
-        {/* Right thumb */}
+        {/* ── Right thumb ── */}
         <div
           className="absolute top-0 bottom-0 z-10 flex items-center justify-center
                      cursor-ew-resize touch-none"
@@ -168,8 +200,8 @@ export function TimeSlider() {
           onPointerDown={handleRightDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          aria-label="Range end"
           role="slider"
+          aria-label="Range end"
           aria-valuenow={end}
           aria-valuemin={start + 1}
           aria-valuemax={YEAR_END}

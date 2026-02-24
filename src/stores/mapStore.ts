@@ -5,6 +5,21 @@ export type ViewMode = "timeline" | "map";
 export const VIEW_MODE_KEY = "mizan_view_mode";
 const MAP_CENTER_KEY = "mizan_map_center";
 const MAP_ZOOM_KEY   = "mizan_map_zoom";
+const MAP_RANGE_KEY  = "mizan_map_range";
+
+const DEFAULT_MAP_RANGE = { start: -100, end: 99 };
+
+function readMapRange(): { start: number; end: number } {
+  if (typeof window === "undefined") return DEFAULT_MAP_RANGE;
+  try {
+    const stored = localStorage.getItem(MAP_RANGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as { start: unknown; end: unknown };
+      if (typeof parsed.start === "number" && typeof parsed.end === "number") return parsed as { start: number; end: number };
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_MAP_RANGE;
+}
 
 function readViewMode(): ViewMode {
   if (typeof window === "undefined") return "timeline";
@@ -39,6 +54,9 @@ interface MapState {
   viewMode: ViewMode;
   mapCenter: { lat: number; lng: number };
   mapZoom: number;
+  /** Map-only year range driven by the TimeSlider — independent of the timeline sidebar range. */
+  mapRangeStart: number;
+  mapRangeEnd:   number;
   drawerPreviewPin: { lat: number; lng: number; noteId: number | null } | null;
   /** true = next map tap assigns location to the currently open note */
   locationPickMode: boolean;
@@ -48,6 +66,7 @@ interface MapState {
   setViewMode: (mode: ViewMode) => void;
   setMapCenter: (c: { lat: number; lng: number }) => void;
   setMapZoom: (z: number) => void;
+  setMapRange: (start: number, end: number) => void;
   setDrawerPreviewPin: (pin: { lat: number; lng: number; noteId: number | null } | null) => void;
   setLocationPickMode: (active: boolean) => void;
   setPendingLocationPick: (loc: { lat: number; lng: number } | null) => void;
@@ -59,6 +78,8 @@ export const useMapStore = create<MapState>((set) => ({
   viewMode:            "timeline",
   mapCenter:           readMapCenter(),
   mapZoom:             readMapZoom(),
+  mapRangeStart:       readMapRange().start,
+  mapRangeEnd:         readMapRange().end,
   drawerPreviewPin:    null,
   locationPickMode:    false,
   pendingLocationPick: null,
@@ -66,6 +87,12 @@ export const useMapStore = create<MapState>((set) => ({
   setViewMode: (mode) => {
     if (typeof window !== "undefined") localStorage.setItem(VIEW_MODE_KEY, mode);
     set({ viewMode: mode });
+  },
+
+  setMapRange: (start, end) => {
+    if (typeof window !== "undefined")
+      localStorage.setItem(MAP_RANGE_KEY, JSON.stringify({ start, end }));
+    set({ mapRangeStart: start, mapRangeEnd: end });
   },
 
   setMapCenter: (c) => {

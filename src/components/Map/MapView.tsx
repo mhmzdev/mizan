@@ -161,12 +161,12 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
   const drawerOpen = useNotesStore((s) => s.drawerOpen);
   const pendingSourceEvent = useNotesStore((s) => s.pendingSourceEvent);
 
-  const rangeStart = useTimelineStore((s) => s.rangeStart);
-  const rangeEnd = useTimelineStore((s) => s.rangeEnd);
-  const rangeStartRef = useRef(rangeStart);
-  const rangeEndRef = useRef(rangeEnd);
-  rangeStartRef.current = rangeStart;
-  rangeEndRef.current = rangeEnd;
+  const mapRangeStart = useMapStore((s) => s.mapRangeStart);
+  const mapRangeEnd   = useMapStore((s) => s.mapRangeEnd);
+  const rangeStartRef = useRef(mapRangeStart);
+  const rangeEndRef   = useRef(mapRangeEnd);
+  rangeStartRef.current = mapRangeStart;
+  rangeEndRef.current   = mapRangeEnd;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -439,12 +439,13 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
   // ── Reactive: apply year-range filter to both notes and events ───────────
   useEffect(() => {
     if (!mapRef.current?.isStyleLoaded()) return;
-    const filter = (rangeStart !== null && rangeEnd !== null
-      ? ["all", [">=", ["get", "year"], rangeStart], ["<=", ["get", "year"], rangeEnd]]
-      : null) as maplibregl.FilterSpecification | null;
+    const filter = ["all",
+      [">=", ["get", "year"], mapRangeStart],
+      ["<=", ["get", "year"], mapRangeEnd],
+    ] as maplibregl.FilterSpecification;
     if (mapRef.current.getLayer("notes-circles")) mapRef.current.setFilter("notes-circles", filter);
     if (mapRef.current.getLayer("events-circles")) mapRef.current.setFilter("events-circles", filter);
-  }, [rangeStart, rangeEnd]);
+  }, [mapRangeStart, mapRangeEnd]);
 
   // ── Reactive: update events GeoJSON when events, timelines, or panel filters change ──
   useEffect(() => {
