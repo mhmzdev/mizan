@@ -20,8 +20,10 @@ src/
       YearBlock.tsx            # One year's tick mark + label — React.memo, receives pxPerYear float
       NoteDot.tsx              # Hover tooltip for a user note; pulse animation when active
       EventDot.tsx             # Hover tooltip for a seed event (years mode only)
+    Map/
+      MapView.tsx              # MapLibre GL canvas; GeoJSON circle layer; preview pin; range + theme reactive
     Notes/
-      NotesPanel.tsx           # Left panel: note list, search bar, range filter badge
+      NotesPanel.tsx           # Left panel: note list, search bar, range filter badge, unmapped count
       NoteCard.tsx             # Single row in the note list
       NoteDrawer.tsx           # Slide-in editor (create / edit notes); full-screen on mobile
     Sidebar/
@@ -36,6 +38,7 @@ src/
     notesStore.ts              # Notes + timelines CRUD + drawer state — see "Stores" below
     dialogStore.ts             # Confirm dialog (imperative API: await confirm({...}))
     settingsStore.ts           # User preferences (notation) — persisted to localStorage
+    mapStore.ts                # Map view state (viewMode, mapCenter, mapZoom, drawerPreviewPin) — see "Stores" below
 
   hooks/
     useUrlSync.ts              # URL ↔ store sync; debounced writes + localStorage persistence
@@ -95,6 +98,18 @@ Key actions: `setPxPerYear`, `setScrollLeft`, `setPendingNav`, `setRange`, `clea
 
 Key actions: `openDrawer(year, noteId?, title?, sourceEvent?)`, `closeDrawer()`, `saveNote`, `updateNote`, `deleteNote`, `loadNotes`, `loadTimelines`, `addTimeline`, `renameTimeline`, `deleteTimeline`, `toggleTimelineHidden`, `linkNotes`, `unlinkNotes`, `clearBrokenLink`, `importData`, `undoDelete`, `commitDelete`.
 
+### `mapStore` (`src/stores/mapStore.ts`)
+
+| Field | Type | Purpose |
+|---|---|---|
+| `viewMode` | `"timeline" \| "map"` | Which center panel is shown |
+| `mapCenter` | `{ lat: number; lng: number }` | Last map center (default: Levant 32°N 35°E) |
+| `mapZoom` | `number` | Last map zoom level (default: 4) |
+| `drawerPreviewPin` | `{ lat, lng, noteId } \| null` | Temporary marker shown while NoteDrawer has unsaved coords |
+
+Key actions: `setViewMode`, `setMapCenter`, `setMapZoom`, `setDrawerPreviewPin`.
+`viewMode`, `mapCenter`, `mapZoom` are persisted to localStorage. `drawerPreviewPin` is always `null` on mount.
+
 ---
 
 ## Rendering Pipeline
@@ -118,7 +133,7 @@ page.tsx
 
 ### IndexedDB (Dexie — `src/lib/db.ts`)
 - `timelines` table: `{ id, title, isDefault, eventTrack?, hidden?, createdAt }` — schema v2+
-- `notes` table: `{ id, timelineId, year, title, content, sourceEventId?, linkedNoteId?, createdAt, updatedAt }` — schema v4 (indexed: `year, timelineId, sourceEventId, linkedNoteId`)
+- `notes` table: `{ id, timelineId, year, title, content, sourceEventId?, linkedNoteId?, lat?, lng?, locationAccuracy?, createdAt, updatedAt }` — schema v5 (indexed: `year, timelineId, sourceEventId, linkedNoteId`; `lat`/`lng`/`locationAccuracy` are optional, not indexed)
 
 ### localStorage
 | Key | Value |
@@ -129,6 +144,9 @@ page.tsx
 | `mizan_last_timeline_id` | Last selected timeline id (number) |
 | `mizan_theme` | `"dark"` or `"light"` (string) |
 | `mizan_notation` | `"BC/AD"` \| `"BCE/CE"` \| `"BH/AH"` — year display notation |
+| `mizan_view_mode` | `"timeline"` \| `"map"` — last active center panel |
+| `mizan_map_center` | `{ lat, lng }` JSON — last map camera center |
+| `mizan_map_zoom` | Float — last map zoom level |
 
 ### URL params
 | Param | Meaning |

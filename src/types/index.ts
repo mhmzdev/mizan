@@ -22,6 +22,12 @@ export interface Note {
   sourceEventId?: string;
   /** ID of the other note this note is linked to (bidirectional). */
   linkedNoteId?: number;
+  /** WGS-84 latitude (-90 to +90) */
+  lat?: number;
+  /** WGS-84 longitude (-180 to +180) */
+  lng?: number;
+  /** Location accuracy in metres, optional metadata */
+  locationAccuracy?: number;
   createdAt: number;
   updatedAt: number;
 }

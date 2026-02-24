@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Link2, Check, ChevronLeft, ChevronRight, StickyNote, Layers, Sun, Moon, Play, HardDrive } from "lucide-react";
+import { Link2, Check, ChevronLeft, ChevronRight, StickyNote, Layers, Sun, Moon, Play, HardDrive, Globe } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import dynamic from "next/dynamic";
 import { TimelineContainer } from "@/components/Timeline/TimelineContainer";
 import { NotesPanel } from "@/components/Notes/NotesPanel";
 import { NoteDrawer } from "@/components/Notes/NoteDrawer";
@@ -16,10 +17,13 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { useTourStore } from "@/stores/tourStore";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
+import { useMapStore } from "@/stores/mapStore";
 import { useUrlSync } from "@/hooks/useUrlSync";
 import { useTheme } from "@/hooks/useTheme";
 import { MAX_PX_PER_YEAR } from "@/utils/constants";
 import { TimelineEvent } from "@/types";
+
+const MapView = dynamic(() => import("@/components/Map/MapView"), { ssr: false });
 
 const MIN_PANEL_W = 208; // minimum / default panel width
 const MAX_PANEL_W = 400; // maximum panel width
@@ -49,6 +53,9 @@ export default function Home() {
   const loadNotes     = useNotesStore((s) => s.loadNotes);
   const loadTimelines = useNotesStore((s) => s.loadTimelines);
   const drawerOpen    = useNotesStore((s) => s.drawerOpen);
+
+  const viewMode    = useMapStore((s) => s.viewMode);
+  const setViewMode = useMapStore((s) => s.setViewMode);
 
   const tourActive = useTourStore((s) => s.active);
   const tourStep   = useTourStore((s) => s.step);
@@ -249,6 +256,17 @@ export default function Home() {
             <Play size={12} />
           </button>
           <button
+            onClick={() => setViewMode(viewMode === "map" ? "timeline" : "map")}
+            title={viewMode === "map" ? "Switch to timeline" : "Switch to map"}
+            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+              viewMode === "map"
+                ? "text-no-blue bg-no-blue/10"
+                : "text-no-muted hover:text-no-blue hover:bg-no-blue/10"
+            }`}
+          >
+            <Globe size={13} />
+          </button>
+          <button
             onClick={() => setExportImportOpen(true)}
             title="Export / Import notes"
             className="w-8 h-8 flex items-center justify-center rounded-lg text-no-muted hover:text-no-blue hover:bg-no-blue/10 transition-colors"
@@ -321,9 +339,12 @@ export default function Home() {
         {/* Note drawer — always present, left follows notes panel */}
         <NoteDrawer panelWidth={notesPanelWidth} isMobile={isMobile} instantLeft={isResizingRef.current} />
 
-        {/* Timeline — takes all remaining space */}
+        {/* Timeline / Map — takes all remaining space */}
         <div data-tour="tour-timeline" className="flex flex-1 min-w-0 overflow-hidden">
-          <TimelineContainer eventsByYear={eventsByYear} />
+          {viewMode === "map"
+            ? <MapView />
+            : <TimelineContainer eventsByYear={eventsByYear} />
+          }
         </div>
 
         {/* Sidebar collapse/expand tab */}

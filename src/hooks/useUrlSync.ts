@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useTimelineStore } from "@/stores/timelineStore";
 import { useNotesStore } from "@/stores/notesStore";
+import { useMapStore, VIEW_MODE_KEY } from "@/stores/mapStore";
 import {
   MIN_PX_PER_YEAR,
   MAX_PX_PER_YEAR,
@@ -27,31 +28,35 @@ function parseUrlParams(): {
   noteId: number | null;
   rangeFrom: number | null;
   rangeTo:   number | null;
+  view: "map" | "timeline" | null;
 } {
   if (typeof window === "undefined")
-    return { year: null, zoom: null, noteId: null, rangeFrom: null, rangeTo: null };
+    return { year: null, zoom: null, noteId: null, rangeFrom: null, rangeTo: null, view: null };
   const p = new URLSearchParams(window.location.search);
   const y  = p.get("year");
   const z  = p.get("zoom");
   const n  = p.get("note");
   const rf = p.get("range_from");
   const rt = p.get("range_to");
+  const v  = p.get("view");
   return {
     year:      y  !== null ? parseInt(y,  10) : null,
     zoom:      z  !== null ? parseFloat(z)    : null,
     noteId:    n  !== null ? parseInt(n,  10) : null,
     rangeFrom: rf !== null ? parseInt(rf, 10) : null,
     rangeTo:   rt !== null ? parseInt(rt, 10) : null,
+    view:      (v === "map" || v === "timeline") ? v : null,
   };
 }
 
 /**
- * Returns a shareable URL for a specific note, including its year for context.
- * e.g. https://your-domain.com/?year=-44&note=7
+ * Returns a shareable URL for a specific note, including its year and current view mode.
+ * e.g. https://your-domain.com/?year=-44&note=7&view=map
  */
 export function buildNoteUrl(noteId: number, year: number): string {
   if (typeof window === "undefined") return "";
-  return `${window.location.origin}${window.location.pathname}?year=${year}&note=${noteId}`;
+  const view = useMapStore.getState().viewMode;
+  return `${window.location.origin}${window.location.pathname}?year=${year}&note=${noteId}&view=${view}`;
 }
 
 /**
@@ -68,7 +73,17 @@ export function useUrlSync() {
 
   // ── 1. One-time initialisation ─────────────────────────────────────────────
   useEffect(() => {
-    const { year, zoom, noteId, rangeFrom, rangeTo } = parseUrlParams();
+    const { year, zoom, noteId, rangeFrom, rangeTo, view } = parseUrlParams();
+
+    // Restore view mode — URL param takes priority, then localStorage
+    if (view !== null) {
+      useMapStore.getState().setViewMode(view);
+    } else {
+      const saved = localStorage.getItem(VIEW_MODE_KEY);
+      if (saved === "map" || saved === "timeline") {
+        useMapStore.getState().setViewMode(saved);
+      }
+    }
 
     // ?note= deep links are handled separately in page.tsx after notes load.
     if (noteId !== null) return;
@@ -114,13 +129,15 @@ export function useUrlSync() {
       const notes    = useNotesStore.getState();
       const timeline = useTimelineStore.getState();
 
+      const { viewMode } = useMapStore.getState();
+
       if (notes.drawerOpen && notes.editingNoteId !== null) {
         // A saved note is open — include its year so the URL is human-readable.
         const note = notes.notes.find((n) => n.id === notes.editingNoteId);
         const yearPart = note ? `year=${note.year}&` : "";
         window.history.replaceState(
           null, "",
-          `${window.location.pathname}?${yearPart}note=${notes.editingNoteId}`,
+          `${window.location.pathname}?${yearPart}note=${notes.editingNoteId}&view=${viewMode}`,
         );
       } else {
         // No note open — reflect the current viewport position.
@@ -129,6 +146,7 @@ export function useUrlSync() {
         const params = new URLSearchParams();
         params.set("year", String(year));
         params.set("zoom", String(zoom));
+        params.set("view", viewMode);
         if (timeline.rangeStart !== null && timeline.rangeEnd !== null) {
           params.set("range_from", String(timeline.rangeStart));
           params.set("range_to",   String(timeline.rangeEnd));
@@ -168,9 +186,15 @@ export function useUrlSync() {
       }
     });
 
+    // mapStore: fire when view mode changes
+    const unsubMap = useMapStore.subscribe((state, prev) => {
+      if (state.viewMode !== prev.viewMode) schedule();
+    });
+
     return () => {
       unsubTimeline();
       unsubNotes();
+      unsubMap();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []); // store refs are stable — no reactive deps needed

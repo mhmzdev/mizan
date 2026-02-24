@@ -30,6 +30,11 @@ class MizanDB extends Dexie {
       timelines: "++id",
     });
 
+    this.version(5).stores({
+      notes: "++id, year, timelineId, sourceEventId, linkedNoteId",
+      timelines: "++id",
+    });
+
     // Seed the two default timelines on first-ever database creation
     this.on("populate", () => {
       this.timelines.bulkAdd([

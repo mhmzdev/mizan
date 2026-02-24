@@ -2,6 +2,7 @@ import {create} from "zustand";
 import {Note, Timeline, TimelineEvent} from "@/types";
 import {db} from "@/lib/db";
 import {useTimelineStore} from "@/stores/timelineStore";
+import {useMapStore} from "@/stores/mapStore";
 
 export interface ExportPayload {
   version: 1;
@@ -40,6 +41,13 @@ interface NotesState {
   drawerTimelineId: number | null;
   /** Stashed data for the last deletion — null means nothing pending. */
   pendingDelete: PendingDelete | null;
+  /** Mirrors NotesPanel search → drives map pin filter. */
+  panelSearch: string;
+  /** Mirrors NotesPanel timeline dropdown → drives map pin filter. */
+  panelTimelineId: number | null;
+  /** Lat pre-fill when opening the drawer from a map tap on empty area. */
+  pendingLat: number | null;
+  pendingLng: number | null;
 
   loadNotes: () => Promise<void>;
   loadTimelines: () => Promise<void>;
@@ -50,10 +58,12 @@ interface NotesState {
   setLastTimelineId: (id: number) => void;
   setDrawerTimelineId: (id: number | null) => void;
 
-  openDrawer: (year: number, noteId?: number, title?: string, sourceEvent?: TimelineEvent) => void;
+  openDrawer: (year: number, noteId?: number, title?: string, sourceEvent?: TimelineEvent, pendingLat?: number, pendingLng?: number) => void;
+  setPanelSearch: (q: string) => void;
+  setPanelTimelineId: (id: number | null) => void;
   closeDrawer: () => void;
-  saveNote: (data: {timelineId: number; year: number; title: string; content: string; sourceEventId?: string}) => Promise<void>;
-  updateNote: (id: number, changes: {timelineId?: number; title?: string; content?: string; year?: number}) => Promise<void>;
+  saveNote: (data: {timelineId: number; year: number; title: string; content: string; sourceEventId?: string; lat?: number; lng?: number; locationAccuracy?: number}) => Promise<void>;
+  updateNote: (id: number, changes: {timelineId?: number; title?: string; content?: string; year?: number; lat?: number | null; lng?: number | null; locationAccuracy?: number | null}) => Promise<void>;
   deleteNote: (id: number) => Promise<void>;
   linkNotes: (noteId: number, partnerId: number) => Promise<void>;
   unlinkNotes: (noteId: number) => Promise<void>;
@@ -77,6 +87,10 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   lastTimelineId: readLastTimelineId(),
   drawerTimelineId: null,
   pendingDelete: null,
+  panelSearch: "",
+  panelTimelineId: null,
+  pendingLat: null,
+  pendingLng: null,
 
   loadNotes: async () => {
     const notes = await db.notes.orderBy("year").toArray();
@@ -144,7 +158,10 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   setDrawerTimelineId: (id) => set({drawerTimelineId: id}),
 
-  openDrawer: (year, noteId, title, sourceEvent) => {
+  setPanelSearch: (q) => set({ panelSearch: q }),
+  setPanelTimelineId: (id) => set({ panelTimelineId: id }),
+
+  openDrawer: (year, noteId, title, sourceEvent, pendingLat, pendingLng) => {
     // Update active interval overlay if opening a linked note
     if (noteId !== undefined) {
       const notes = get().notes;
@@ -170,12 +187,16 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       editingNoteId: noteId ?? null,
       pendingTitle: title ?? "",
       pendingSourceEvent: sourceEvent ?? null,
+      pendingLat: pendingLat ?? null,
+      pendingLng: pendingLng ?? null,
     });
   },
 
   closeDrawer: () => {
     useTimelineStore.getState().setActiveInterval(null);
-    set({drawerOpen: false, editingNoteId: null, drawerTimelineId: null, pendingTitle: "", pendingSourceEvent: null});
+    // Also clear pick mode so crosshair cursor doesn't linger
+    useMapStore.getState().setLocationPickMode(false);
+    set({drawerOpen: false, editingNoteId: null, drawerTimelineId: null, pendingTitle: "", pendingSourceEvent: null, pendingLat: null, pendingLng: null});
   },
 
   saveNote: async (data) => {
@@ -186,7 +207,30 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   },
 
   updateNote: async (id, changes) => {
-    await db.notes.update(id, {...changes, updatedAt: Date.now()});
+    if ("lat" in changes && changes.lat == null) {
+      // Remove optional location fields — db.update() can't set them to null
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await db.notes.where("id").equals(id).modify((obj: any) => {
+        delete obj.lat; delete obj.lng; delete obj.locationAccuracy;
+      });
+      // Apply remaining non-location changes
+      const { lat: _lat, lng: _lng, locationAccuracy: _acc, ...rest } = changes;
+      // Build a clean object without null values for Dexie UpdateSpec
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cleanRest: Record<string, any> = { updatedAt: Date.now() };
+      for (const [k, v] of Object.entries(rest)) {
+        if (v !== null && v !== undefined) cleanRest[k] = v;
+      }
+      await db.notes.update(id, cleanRest);
+    } else {
+      // Strip any null values before passing to Dexie (lat undefined = no change)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const clean: Record<string, any> = { updatedAt: Date.now() };
+      for (const [k, v] of Object.entries(changes)) {
+        if (v !== null && v !== undefined) clean[k] = v;
+      }
+      await db.notes.update(id, clean);
+    }
     const notes = await db.notes.orderBy("year").toArray();
     set({notes});
   },

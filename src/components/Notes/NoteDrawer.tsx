@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { X, Link, Check, ChevronDown, Trash2, Lock, Link2, Link2Off, ArrowRight, AlertTriangle, Search } from "lucide-react";
+import { X, Link, Check, ChevronDown, Trash2, Lock, Link2, Link2Off, ArrowRight, AlertTriangle, Search, MapPin, Map } from "lucide-react";
 import { getTimelineColor } from "@/utils/timelineColors";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNotesStore } from "@/stores/notesStore";
 import { useDialogStore } from "@/stores/dialogStore";
+import { useMapStore } from "@/stores/mapStore";
 import { useFormatYear } from "@/hooks/useFormatYear";
 import { buildNoteUrl } from "@/hooks/useUrlSync";
 import { MarkdownEditor } from "./MarkdownEditor";
@@ -88,6 +89,15 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
   const [formKey,        setFormKey]       = useState(0);
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
   const [linkSearch,     setLinkSearch]    = useState("");
+  const [lat,            setLat]           = useState<number | null>(null);
+  const [lng,            setLng]           = useState<number | null>(null);
+
+  const pendingLat          = useNotesStore((s) => s.pendingLat);
+  const pendingLng          = useNotesStore((s) => s.pendingLng);
+
+  const viewMode              = useMapStore((s) => s.viewMode);
+  const setDrawerPreviewPin   = useMapStore((s) => s.setDrawerPreviewPin);
+  const pendingLocationPick   = useMapStore((s) => s.pendingLocationPick);
 
   const isEventAnnotation = sourceEventId !== null;
 
@@ -128,6 +138,8 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
         resolvedTimelineId = note.timelineId;
         setTimelineId(note.timelineId);
         setSourceEventId(note.sourceEventId ?? null);
+        setLat(note.lat ?? null);
+        setLng(note.lng ?? null);
       }
     } else {
       setYearInput(fmt(selectedYear));
@@ -135,12 +147,22 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
       setContent("");
       setTimelineId(lastTimelineId);
       setSourceEventId(pendingSourceEvent?.id ?? null);
+      setLat(pendingLat ?? null);
+      setLng(pendingLng ?? null);
     }
     setYearError(false);
     setLinkPickerOpen(false);
     setLinkSearch("");
     setDrawerTimelineId(resolvedTimelineId);
-  }, [drawerOpen, editingNoteId, pendingTitle, selectedYear, pendingSourceEvent]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [drawerOpen, editingNoteId, pendingTitle, selectedYear, pendingSourceEvent, pendingLat, pendingLng]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Consume location pick from map (crosshair tap) → fill lat/lng in form
+  useEffect(() => {
+    if (!pendingLocationPick) return;
+    setLat(parseFloat(pendingLocationPick.lat.toFixed(6)));
+    setLng(parseFloat(pendingLocationPick.lng.toFixed(6)));
+    useMapStore.getState().setPendingLocationPick(null);
+  }, [pendingLocationPick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTimelineChange = useCallback((id: number) => {
     setTimelineId(id);
@@ -148,13 +170,27 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
     setDrawerTimelineId(id);
   }, [setLastTimelineId, setDrawerTimelineId]);
 
+  // Sync preview pin with current lat/lng state
+  useEffect(() => {
+    setDrawerPreviewPin(
+      lat !== null && lng !== null
+        ? { lat, lng, noteId: editingNoteId }
+        : null
+    );
+  }, [lat, lng, editingNoteId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear preview pin when drawer closes
+  useEffect(() => {
+    if (!drawerOpen) setDrawerPreviewPin(null);
+  }, [drawerOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSave = useCallback(async () => {
     if (!title.trim()) return;
     const parsedYear = parseYearInput(yearInput);
     if (parsedYear === null) { setYearError(true); return; }
 
     if (editingNoteId !== null) {
-      await updateNote(editingNoteId, { timelineId, year: parsedYear, title: title.trim(), content });
+      await updateNote(editingNoteId, { timelineId, year: parsedYear, title: title.trim(), content, lat: lat ?? null, lng: lng ?? null });
     } else {
       await saveNote({
         timelineId,
@@ -162,10 +198,11 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
         title: title.trim(),
         content,
         ...(sourceEventId ? { sourceEventId } : {}),
+        ...(lat !== null ? { lat, lng: lng! } : {}),
       });
     }
     closeDrawer();
-  }, [yearInput, title, content, timelineId, editingNoteId, sourceEventId, saveNote, updateNote, closeDrawer]);
+  }, [yearInput, title, content, timelineId, editingNoteId, sourceEventId, lat, lng, saveNote, updateNote, closeDrawer]);
 
   const handleCopyNoteLink = useCallback(() => {
     if (editingNoteId === null) return;
@@ -312,6 +349,70 @@ export function NoteDrawer({ panelWidth, isMobile, instantLeft }: NoteDrawerProp
                   <p className="text-red-400 text-[12px] mt-1">Enter a valid year — e.g. &quot;500 BC&quot; or &quot;1066 AD&quot;</p>
                 )}
               </>
+            )}
+          </div>
+        </div>
+
+        {/* ── Location section (always shown — button adapts to context) ── */}
+        <div className="flex flex-col gap-2 px-4 py-3 border-b border-no-border/50">
+          <div className="flex items-center justify-between">
+            <span className={labelClass}>Location</span>
+            {viewMode === "map" ? (
+              /* In map view — "Set location" triggers pick mode */
+              <button
+                onClick={() => useMapStore.getState().setLocationPickMode(true)}
+                className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
+              >
+                <MapPin size={11} />
+                <span>Set location</span>
+              </button>
+            ) : lat !== null ? (
+              /* In timeline view with coords — "Go to map" centers + switches */
+              <button
+                onClick={() => {
+                  useMapStore.getState().setMapCenter({ lat: lat!, lng: lng! });
+                  useMapStore.getState().setViewMode("map");
+                }}
+                className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
+              >
+                <Map size={11} />
+                <span>Go to map</span>
+              </button>
+            ) : (
+              /* In timeline view with no coords — "Set location" switches to map + pick */
+              <button
+                onClick={() => {
+                  useMapStore.getState().setViewMode("map");
+                  useMapStore.getState().setLocationPickMode(true);
+                }}
+                className="flex items-center gap-1.5 text-[11px] text-no-blue/70 hover:text-no-blue transition-colors"
+              >
+                <MapPin size={11} />
+                <span>Set location</span>
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2 items-center">
+            <div className="flex-1 bg-no-bg/60 border border-no-border/70 rounded-lg px-2.5 py-1.5 text-no-text text-[12px] font-mono min-w-0">
+              {lat !== null ? (
+                <span>{lat.toFixed(4)}° lat</span>
+              ) : (
+                <span className="text-no-muted/40">No location</span>
+              )}
+            </div>
+            {lng !== null && lat !== null && (
+              <div className="flex-1 bg-no-bg/60 border border-no-border/70 rounded-lg px-2.5 py-1.5 text-no-text text-[12px] font-mono min-w-0">
+                <span>{lng.toFixed(4)}° lng</span>
+              </div>
+            )}
+            {lat !== null && (
+              <button
+                onClick={() => { setLat(null); setLng(null); }}
+                title="Clear location"
+                className="w-6 h-6 flex items-center justify-center rounded text-no-muted/50 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+              >
+                <X size={11} />
+              </button>
             )}
           </div>
         </div>

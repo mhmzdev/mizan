@@ -122,6 +122,12 @@ body {
 }
 .histo-glow { animation: histo-glow 1.6s ease-in-out infinite; }
 
+/* MapView NoteDrawer preview pin — expanding ring pulse */
+@keyframes drawer-pin-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(116, 160, 255, 0.35); }
+  50%       { box-shadow: 0 0 0 9px rgba(116, 160, 255, 0.0);  }
+}
+
 /* Global themed scrollbar — all overflow areas adapt to dark/light theme */
 * {
   scrollbar-width: thin;

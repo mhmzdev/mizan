@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Plus, Search, StickyNote, X, ChevronDown, Check } from "lucide-react";
+import { Plus, Search, StickyNote, X, ChevronDown, Check, MapPin } from "lucide-react";
 import { useNotesStore } from "@/stores/notesStore";
 import { useTimelineStore } from "@/stores/timelineStore";
+import { useMapStore } from "@/stores/mapStore";
 import { useFormatYear } from "@/hooks/useFormatYear";
 import { getTimelineColor, alphaColor } from "@/utils/timelineColors";
 import { NoteCard } from "./NoteCard";
@@ -27,8 +28,10 @@ export function NotesPanel({ events }: NotesPanelProps) {
   const clearRange = useTimelineStore((s) => s.clearRange);
   const rangeActive = rangeStart !== null && rangeEnd !== null;
 
-  const [search,             setSearch]             = useState("");
-  const [selectedTimelineId, setSelectedTimelineId] = useState<number | null>(null);
+  const search             = useNotesStore((s) => s.panelSearch);
+  const setSearch          = useNotesStore((s) => s.setPanelSearch);
+  const selectedTimelineId = useNotesStore((s) => s.panelTimelineId);
+  const setSelectedTimelineId = useNotesStore((s) => s.setPanelTimelineId);
   const [dropdownOpen,       setDropdownOpen]       = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -67,7 +70,9 @@ export function NotesPanel({ events }: NotesPanelProps) {
       .slice(0, MAX_EVENT_RESULTS);
   }, [query, events]);
 
+  const viewMode = useMapStore((s) => s.viewMode);
   const visibleNotes = notes.filter((n) => !hiddenIds.has(n.timelineId));
+  const unmappedCount = viewMode === "map" ? visibleNotes.filter((n) => !n.lat).length : 0;
   const showTabs = visibleNotes.length > 0 && visibleTimelines.length > 1;
   const isFiltered = query || rangeActive || selectedTimelineId !== null;
   const hasResults = filtered.length > 0 || matchedEvents.length > 0;
@@ -195,6 +200,16 @@ export function NotesPanel({ events }: NotesPanelProps) {
           )}
         </div>
       </div>
+
+      {/* Unmapped notes badge — visible only in map mode */}
+      {viewMode === "map" && unmappedCount > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-no-border/50 bg-no-blue/5 shrink-0">
+          <MapPin size={11} className="text-no-blue/60 shrink-0" />
+          <span className="text-no-blue/70 text-[12px]">
+            {unmappedCount} note{unmappedCount !== 1 ? "s" : ""} without location
+          </span>
+        </div>
+      )}
 
       {/* List or empty state */}
       <div className="flex-1 overflow-y-auto panel-scroll">

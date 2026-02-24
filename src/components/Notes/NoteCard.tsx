@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { MapPin } from "lucide-react";
 import { Note } from "@/types";
 import { useFormatYear } from "@/hooks/useFormatYear";
 import { useNotesStore } from "@/stores/notesStore";
@@ -43,6 +44,11 @@ export function NoteCard({ note }: NoteCardProps) {
         <div className="flex items-center gap-1.5 shrink-0">
           {note.linkedNoteId && (
             <span className="text-[9px] text-no-blue/70 font-mono" title="Linked note">↔</span>
+          )}
+          {note.lat != null && (
+            <span title="Has map location" className="flex items-center shrink-0">
+              <MapPin size={9} className="text-no-blue/55" />
+            </span>
           )}
           {timelineName && (
             <span
