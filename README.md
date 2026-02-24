@@ -3,8 +3,10 @@
 A high-performance, virtualized historical timeline spanning from 4001 BC to 2026 AD. Built with Next.js, Mizan renders thousands of years of history in a smooth, scrollable interface with multiple zoom levels.
 
 <a href="https://mizan-tl.vercel.app">
-  <img src="./showcase/home.png" alt="home" width="50%"/>
+  <img src="./showcase/home.png" alt="home" width="80%"/>
 </a>
+
+<img src="./showcase/map.png" alt="home" width="80%"/>
 
 ## 📝 Features
 

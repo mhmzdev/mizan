@@ -65,8 +65,14 @@ export default function Home() {
   useEffect(() => {
     if (prevViewMode.current === "timeline" && viewMode === "map") {
       // Save position before TimelineContainer unmounts
-      const { centerYear, pxPerYear } = useTimelineStore.getState();
+      const { centerYear, pxPerYear, rangeStart, rangeEnd } = useTimelineStore.getState();
       savedTimelinePos.current = { year: centerYear, zoom: pxPerYear };
+
+      // If the user had an explicit range filter active in timeline view, sync the
+      // map slider to that same range so both views show a consistent window.
+      if (rangeStart !== null && rangeEnd !== null) {
+        useMapStore.getState().setMapRange(rangeStart, rangeEnd);
+      }
     } else if (prevViewMode.current === "map" && viewMode === "timeline") {
       // TimelineContainer just mounted and reset to year 0. After its
       // useLayoutEffect sets the default pendingNav, we override it so the
