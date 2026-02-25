@@ -13,17 +13,11 @@ import {TimeSlider} from "./TimeSlider";
 import {YEAR_START, YEAR_END} from "@/utils/constants";
 import {mizanYearToDecimal} from "@/utils/yearUtils";
 
-const PROTOMAPS_KEY = process.env.NEXT_PUBLIC_PROTOMAPS_KEY;
-const MAPTILER_KEY  = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
 
 const OHM_STYLE_URL = "https://www.openhistoricalmap.org/map-styles/main/main.json";
 
 function getMapStyle(isDark: boolean): string {
-  if (PROTOMAPS_KEY) {
-    return isDark
-      ? `https://api.protomaps.com/styles/v5/dark/en.json?key=${PROTOMAPS_KEY}`
-      : `https://api.protomaps.com/styles/v5/light/en.json?key=${PROTOMAPS_KEY}`;
-  }
   if (MAPTILER_KEY) {
     return isDark
       ? `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`
@@ -118,14 +112,17 @@ function fixOHMLanguage(map: maplibregl.Map): void {
 
 /**
  * Apply the correct CSS filter to the map container div.
- * Replaces the old canvas-level `brightness(0.75)` approach and also handles
- * the historical-map dark treatment (sepia + brightness + contrast).
+ * In dark mode we dim the map canvas slightly so it sits better against the dark UI.
+ * For OHM (a light-toned map) we use a very gentle dim only — heavier filters
+ * also darken our note/event pins (which live on the same WebGL canvas) making
+ * them hard to see against the washed-out background.
  */
 function applyContainerFilter(el: HTMLElement | null, historyModeOn: boolean): void {
   if (!el) return;
   const dark = document.documentElement.getAttribute("data-theme") !== "light";
   if (historyModeOn) {
-    el.style.filter = dark ? "sepia(0.4) brightness(0.55) contrast(1.1)" : "";
+    // OHM is a light map — gentle dim only, no sepia, so colored pins stay visible
+    el.style.filter = dark ? "brightness(0.82)" : "";
   } else {
     el.style.filter = dark ? "brightness(0.75)" : "";
   }
