@@ -38,14 +38,17 @@ function getMapStyle(isDark: boolean): string {
  * Apply OHM temporal date filter to all vector tile layers.
  * OHM features expose `start_decdate` / `end_decdate` (astronomical decimal years).
  * Features without those properties are always shown (timeless basemap elements).
+ *
+ * Note: OHM encodes decdate values as strings in some layers, so we coerce with
+ * `to-number` before comparing to avoid MapLibre's type-mismatch errors.
  */
 function applyOHMDateFilter(map: maplibregl.Map, year: number): void {
   if (!map.isStyleLoaded()) return;
   const decYear = mizanYearToDecimal(year);
   const filter: maplibregl.FilterSpecification = [
     "all",
-    ["any", ["!", ["has", "start_decdate"]], ["<=", ["get", "start_decdate"], decYear]],
-    ["any", ["!", ["has", "end_decdate"]],   [">=", ["get", "end_decdate"],   decYear]],
+    ["any", ["!", ["has", "start_decdate"]], ["<=", ["to-number", ["get", "start_decdate"]], decYear]],
+    ["any", ["!", ["has", "end_decdate"]],   [">=", ["to-number", ["get", "end_decdate"]],   decYear]],
   ];
   const style = map.getStyle();
   if (!style?.layers) return;
@@ -53,6 +56,63 @@ function applyOHMDateFilter(map: maplibregl.Map, year: number): void {
     if (!("source-layer" in layer)) continue;
     if (layer.id === "notes-circles" || layer.id === "events-circles") continue;
     try { map.setFilter(layer.id, filter); } catch { /* ignore unsupported layers */ }
+  }
+}
+
+/**
+ * Remove OHM's unreliable external raster sources (landcover/hillshade/DEM hosted on
+ * static-tiles-lclu.s3.us-west-1.amazonaws.com) and disable 3D terrain to prevent
+ * MapLibre from spamming connection-reset errors every render frame.
+ * The vector tile layers still render fine without these.
+ */
+function removeUnreliableOHMSources(map: maplibregl.Map): void {
+  if (!map.isStyleLoaded()) return;
+
+  // Disable 3D terrain first — it references the S3 DEM source and triggers
+  // a tile fetch on every render frame once activated by the OHM style load.
+  try { map.setTerrain(null); } catch { /* ignore if terrain not supported */ }
+
+  const style = map.getStyle();
+  if (!style?.sources) return;
+  for (const [sourceId, source] of Object.entries(style.sources)) {
+    const s = source as { type?: string; tiles?: string[]; url?: string };
+    const tileUrl = s.tiles?.[0] ?? s.url ?? "";
+    if (tileUrl.includes("static-tiles-lclu.s3")) {
+      // Remove dependent layers before removing the source
+      const layersToRemove = (style.layers ?? []).filter(
+        (l) => "source" in l && l.source === sourceId
+      );
+      for (const l of layersToRemove) {
+        if (map.getLayer(l.id)) map.removeLayer(l.id);
+      }
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+    }
+  }
+}
+
+/**
+ * Remap all OHM symbol layer text-field expressions to prefer `name:en` over
+ * the local-script `name` tag. OHM uses local names by default, which produces
+ * Russian, Ukrainian, Arabic, Greek etc. labels depending on the region.
+ * We walk every symbol layer and replace bare `["get", "name"]` references
+ * with `["coalesce", ["get", "name:en"], ["get", "name"]]`.
+ */
+function fixOHMLanguage(map: maplibregl.Map): void {
+  if (!map.isStyleLoaded()) return;
+  const style = map.getStyle();
+  for (const layer of style?.layers ?? []) {
+    if (layer.type !== "symbol") continue;
+    const tf = (layer as maplibregl.SymbolLayerSpecification).layout?.["text-field"];
+    if (!tf) continue;
+    // Match the two forms OHM uses: legacy "{name}" template or ["get", "name"] expr
+    const isBareName =
+      tf === "{name}" ||
+      (Array.isArray(tf) && tf.length === 2 && tf[0] === "get" && tf[1] === "name");
+    if (!isBareName) continue;
+    try {
+      map.setLayoutProperty(layer.id, "text-field",
+        ["coalesce", ["get", "name:en"], ["get", "name"]]);
+    } catch { /* ignore layers that reject layout updates */ }
   }
 }
 
@@ -291,9 +351,11 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
     map.on("load", () => {
       // Apply container-level CSS filter (handles both modern dark dimming + OHM toning)
       applyContainerFilter(el, historyModeRef.current);
-      // If history mode was already active, filter OHM layers to the saved year
+      // If history mode was already active, apply OHM date filter + clean up bad sources
       if (historyModeRef.current) {
+        removeUnreliableOHMSources(map);
         applyOHMDateFilter(map, historyYearRef.current);
+        fixOHMLanguage(map);
       }
       addNotesSource(map);
       addEventsSource(map);
@@ -423,6 +485,11 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
         if (!mapRef.current) return;
         mapRef.current.resize();
         applyContainerFilter(containerRef.current, historyModeRef.current);
+        if (historyModeRef.current) {
+          removeUnreliableOHMSources(mapRef.current);
+          applyOHMDateFilter(mapRef.current, historyYearRef.current);
+          fixOHMLanguage(mapRef.current);
+        }
         addNotesSource(mapRef.current);
         addEventsSource(mapRef.current);
         waitForTiles(mapRef.current, () => setLoaded(true));
@@ -459,7 +526,9 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
       map.resize();
       applyContainerFilter(containerRef.current, historyMode);
       if (historyMode) {
+        removeUnreliableOHMSources(map);
         applyOHMDateFilter(map, historyYearRef.current);
+        fixOHMLanguage(map);
       }
       addNotesSource(map);
       addEventsSource(map);
