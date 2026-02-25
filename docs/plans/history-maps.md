@@ -203,9 +203,24 @@ export function mizanYearToOHM(year: number): string {
 
 **Sparse data in ancient dates:** OHM has very little data before ~1000 AD outside major civilizations. When `historyYear` is far in the past, the map may appear nearly empty. No special handling needed — this is expected behavior.
 
-**No dark theme for OHM:** OHM's `main.json` style is a light historical map. It will contrast with Mizan's dark UI. Options:
-- Accept the contrast (history mode is a distinct "mode", a different visual world is OK)
-- Long-term: use the `woodblock` style for a more neutral look
+**No dark theme for OHM:** OHM offers exactly four styles (main, railway, woodblock, japanese_scroll) — none are dark variants.
+
+**Decision: CSS filter on the map container, conditional on app theme.**
+
+When the app is in dark theme, apply a CSS filter to the `mapContainerRef` div:
+```tsx
+style={{
+  filter: historyMode && theme === "dark"
+    ? "sepia(0.4) brightness(0.55) contrast(1.1)"
+    : "none"
+}}
+```
+- **Dark theme** → filter makes OHM look like an aged atlas — darkened, slightly warm, consistent with dark UI
+- **Light theme** → OHM shown as-is (both are already light-toned, no contrast problem)
+
+**Why this works cleanly in Mizan:** CSS filters create a new stacking context, which normally traps child `z-index` values. This is safe here because Mizan never uses native MapLibre popups (`new maplibregl.Popup()`); all panels, drawers, and overlays are React components rendered *outside* the map container as siblings or ancestors.
+
+**Implementation cost:** 2 lines. Add `const { theme } = useTheme()` to MapView and add a `style` prop to the container div. No MapLibre API changes needed.
 
 **Label collision:** The three year labels (range start, range end, history year) can overlap if the window is small. Handle this by:
 1. Hiding the history label if within 4% of either range label
@@ -243,7 +258,7 @@ A utility to walk all layers and apply this is ~30 lines.
 
 ## Open Questions
 
-1. **OHM style theme:** OHM's `main.json` is light-toned. Should we accept this (history mode = visually distinct mode) or investigate a dark style? The `woodblock` style is warmer/parchment-toned.
+1. ~~**OHM style theme:**~~ **Resolved** — CSS filter (`sepia + brightness + contrast`) applied to the map container when dark theme is active. No dark OHM style exists; this approach costs 2 lines and matches the app theme.
 2. **History handle vs range:** Should the history handle be constrained to stay within the range window? Or free to go anywhere on the full timeline? Current plan: free, since the map filter (range) and map view year (history) are conceptually independent.
 3. **Auto-follow:** When the user drags the range window (center drag), should the history handle follow along to stay centered in the window? Or stay fixed? Recommendation: stay fixed, keep behavior simple.
 4. **MapLibre v5 compatibility of `maplibre-gl-dates`:** Must be verified before committing to the package. If incompatible, manual filter walking is the fallback (not complex, ~30 lines).
