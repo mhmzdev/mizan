@@ -110,3 +110,19 @@ export function getTickIntervalFromPx(pxPerYear: number): number {
 export function pxToYearContinuous(px: number, pxPerYear: number): number {
   return Math.floor(px / pxPerYear) + YEAR_START;
 }
+
+/**
+ * Convert a Mizan internal year to an OHM decimal year (astronomical year float).
+ * OHM vector tiles store feature lifespans as `start_decdate`/`end_decdate` —
+ * decimal years in the astronomical system where year 0 = 1 BC, year 1 = 1 AD.
+ *
+ * Mizan internal year + 1 = astronomical year = OHM decimal year.
+ *
+ * Examples:
+ *   mizanYearToDecimal(0)   →  1   (1 AD)
+ *   mizanYearToDecimal(-1)  →  0   (1 BC)
+ *   mizanYearToDecimal(-44) → -43  (44 BC)
+ */
+export function mizanYearToDecimal(year: number): number {
+  return year + 1;
+}

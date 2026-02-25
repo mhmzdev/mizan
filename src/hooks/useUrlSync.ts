@@ -31,9 +31,11 @@ function parseUrlParams(): {
   mapRangeFrom: number | null;
   mapRangeTo:   number | null;
   view: "map" | "timeline" | null;
+  historyMode: boolean | null;
+  historyYear: number | null;
 } {
   if (typeof window === "undefined")
-    return { year: null, zoom: null, noteId: null, rangeFrom: null, rangeTo: null, mapRangeFrom: null, mapRangeTo: null, view: null };
+    return { year: null, zoom: null, noteId: null, rangeFrom: null, rangeTo: null, mapRangeFrom: null, mapRangeTo: null, view: null, historyMode: null, historyYear: null };
   const p = new URLSearchParams(window.location.search);
   const y   = p.get("year");
   const z   = p.get("zoom");
@@ -43,6 +45,8 @@ function parseUrlParams(): {
   const mrf = p.get("map_range_from");
   const mrt = p.get("map_range_to");
   const v   = p.get("view");
+  const hm  = p.get("history");
+  const hy  = p.get("history_year");
   return {
     year:         y   !== null ? parseInt(y,   10) : null,
     zoom:         z   !== null ? parseFloat(z)     : null,
@@ -52,6 +56,8 @@ function parseUrlParams(): {
     mapRangeFrom: mrf !== null ? parseInt(mrf, 10) : null,
     mapRangeTo:   mrt !== null ? parseInt(mrt, 10) : null,
     view:         (v === "map" || v === "timeline") ? v : null,
+    historyMode:  hm  !== null ? hm === "1" : null,
+    historyYear:  hy  !== null ? parseInt(hy, 10) : null,
   };
 }
 
@@ -79,7 +85,7 @@ export function useUrlSync() {
 
   // ── 1. One-time initialisation ─────────────────────────────────────────────
   useEffect(() => {
-    const { year, zoom, noteId, rangeFrom, rangeTo, mapRangeFrom, mapRangeTo, view } = parseUrlParams();
+    const { year, zoom, noteId, rangeFrom, rangeTo, mapRangeFrom, mapRangeTo, view, historyMode, historyYear } = parseUrlParams();
 
     // Restore view mode — URL param takes priority, then localStorage
     if (view !== null) {
@@ -94,6 +100,14 @@ export function useUrlSync() {
     // Restore map slider range from URL (overrides localStorage default)
     if (mapRangeFrom !== null && mapRangeTo !== null) {
       useMapStore.getState().setMapRange(mapRangeFrom, mapRangeTo);
+    }
+
+    // Restore history mode + year from URL (overrides localStorage)
+    if (historyMode !== null) {
+      useMapStore.getState().setHistoryMode(historyMode);
+    }
+    if (historyYear !== null && !isNaN(historyYear)) {
+      useMapStore.getState().setHistoryYear(historyYear);
     }
 
     // ?note= deep links are handled separately in page.tsx after notes load.
@@ -163,9 +177,14 @@ export function useUrlSync() {
           params.set("range_to",   String(timeline.rangeEnd));
         }
         // Map slider range — always present, stored separately from timeline range
-        const { mapRangeStart, mapRangeEnd } = useMapStore.getState();
+        const { mapRangeStart, mapRangeEnd, historyMode: hm, historyYear: hy } = useMapStore.getState();
         params.set("map_range_from", String(mapRangeStart));
         params.set("map_range_to",   String(mapRangeEnd));
+        // History mode — only include in URL when active to keep links clean
+        if (hm) {
+          params.set("history",      "1");
+          params.set("history_year", String(hy));
+        }
         window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
         // Persist timeline position + explicit timeline range to localStorage.
         // (Map range persists itself via mapStore.setMapRange → localStorage.)
@@ -202,12 +221,14 @@ export function useUrlSync() {
       }
     });
 
-    // mapStore: fire when view mode or map slider range changes
+    // mapStore: fire when view mode, map slider range, or history state changes
     const unsubMap = useMapStore.subscribe((state, prev) => {
       if (
         state.viewMode      !== prev.viewMode      ||
         state.mapRangeStart !== prev.mapRangeStart ||
-        state.mapRangeEnd   !== prev.mapRangeEnd
+        state.mapRangeEnd   !== prev.mapRangeEnd   ||
+        state.historyMode   !== prev.historyMode   ||
+        state.historyYear   !== prev.historyYear
       ) schedule();
     });
 

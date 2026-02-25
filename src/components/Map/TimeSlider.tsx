@@ -7,18 +7,21 @@ import { YEAR_START, YEAR_END } from "@/utils/constants";
 
 const TOTAL_YEARS = YEAR_END - YEAR_START;
 
-type DragMode = "left" | "right" | "center" | null;
+type DragMode = "left" | "right" | "center" | "history" | null;
 
 export function TimeSlider() {
-  const start    = useMapStore((s) => s.mapRangeStart);
-  const end      = useMapStore((s) => s.mapRangeEnd);
-  const setRange = useMapStore((s) => s.setMapRange);
-  const fmt      = useFormatYear();
+  const start        = useMapStore((s) => s.mapRangeStart);
+  const end          = useMapStore((s) => s.mapRangeEnd);
+  const setRange     = useMapStore((s) => s.setMapRange);
+  const historyMode  = useMapStore((s) => s.historyMode);
+  const historyYear  = useMapStore((s) => s.historyYear);
+  const setHistoryYear = useMapStore((s) => s.setHistoryYear);
+  const fmt          = useFormatYear();
 
   const trackRef    = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<DragMode>(null);
 
-  // Anchor for center-drag: year under the pointer + range snapshot at drag start
+  // Anchor snapshot for center-drag pan
   const centerAnchorRef = useRef<{
     anchorYear: number;
     initStart:  number;
@@ -26,16 +29,25 @@ export function TimeSlider() {
   } | null>(null);
 
   // Always-current refs so pointer handlers never close over stale values
-  const startRef = useRef(start);
-  const endRef   = useRef(end);
-  startRef.current = start;
-  endRef.current   = end;
+  const startRef       = useRef(start);
+  const endRef         = useRef(end);
+  const historyYearRef = useRef(historyYear);
+  startRef.current       = start;
+  endRef.current         = end;
+  historyYearRef.current = historyYear;
 
   const yearToPercent = (year: number) =>
     ((year - YEAR_START) / TOTAL_YEARS) * 100;
 
-  const startPct = yearToPercent(start);
-  const endPct   = yearToPercent(end);
+  const startPct   = yearToPercent(start);
+  const endPct     = yearToPercent(end);
+  const historyPct = yearToPercent(historyYear);
+
+  // Hide history label if it's too close (< 5 percentage points) to either range label
+  const historyLabelVisible =
+    historyMode &&
+    Math.abs(historyPct - startPct) > 5 &&
+    Math.abs(historyPct - endPct)   > 5;
 
   function pixelToYear(clientX: number): number {
     if (!trackRef.current) return YEAR_START;
@@ -44,7 +56,7 @@ export function TimeSlider() {
     return Math.round(YEAR_START + pct * TOTAL_YEARS);
   }
 
-  // ── Thumb handlers ──────────────────────────────────────────────────────────
+  // ── Thumb handlers ────────────────────────────────────────────────────────
 
   function handleLeftDown(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault();
@@ -58,7 +70,7 @@ export function TimeSlider() {
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
-  // ── Center (pan) handler ─────────────────────────────────────────────────
+  // ── Center (pan) handler ──────────────────────────────────────────────────
 
   function handleCenterDown(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault();
@@ -71,7 +83,16 @@ export function TimeSlider() {
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
-  // ── Shared move / up ────────────────────────────────────────────────────────
+  // ── History handle handler ────────────────────────────────────────────────
+
+  function handleHistoryDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation(); // prevent center region from capturing first
+    draggingRef.current = "history";
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  // ── Shared move / up ─────────────────────────────────────────────────────
 
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const mode = draggingRef.current;
@@ -95,11 +116,13 @@ export function TimeSlider() {
       const delta      = year - anchorYear;
       const newStart   = Math.max(YEAR_START, Math.min(initStart + delta, YEAR_END - windowSize));
       setRange(newStart, newStart + windowSize);
+    } else if (mode === "history") {
+      setHistoryYear(Math.max(YEAR_START, Math.min(YEAR_END, year)));
     }
   }
 
   function handlePointerUp() {
-    draggingRef.current    = null;
+    draggingRef.current     = null;
     centerAnchorRef.current = null;
   }
 
@@ -107,6 +130,7 @@ export function TimeSlider() {
     <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4">
       {/* Year labels — float above the bar */}
       <div className="relative h-6 mb-1 pointer-events-none select-none">
+        {/* Range start label */}
         <span
           className="absolute bottom-0 -translate-x-1/2 whitespace-nowrap
                      px-1.5 py-0.5 rounded
@@ -117,6 +141,8 @@ export function TimeSlider() {
         >
           {fmt(start)}
         </span>
+
+        {/* Range end label */}
         <span
           className="absolute bottom-0 -translate-x-1/2 whitespace-nowrap
                      px-1.5 py-0.5 rounded
@@ -127,6 +153,20 @@ export function TimeSlider() {
         >
           {fmt(end)}
         </span>
+
+        {/* History year label — amber, shown only when not colliding with range labels */}
+        {historyLabelVisible && (
+          <span
+            className="absolute bottom-0 -translate-x-1/2 whitespace-nowrap
+                       px-1.5 py-0.5 rounded
+                       bg-amber-950/90 border border-amber-400/50
+                       backdrop-blur-sm shadow-sm
+                       text-amber-300 text-[10px] font-mono"
+            style={{ left: `${historyPct}%` }}
+          >
+            {fmt(historyYear)}
+          </span>
+        )}
       </div>
 
       {/* Glassmorphism track bar */}
@@ -164,8 +204,7 @@ export function TimeSlider() {
             <defs>
               <pattern
                 id="ts-hatch"
-                width="10"
-                height="10"
+                width="10" height="10"
                 patternTransform="rotate(45)"
                 patternUnits="userSpaceOnUse"
               >
@@ -209,6 +248,33 @@ export function TimeSlider() {
         >
           <div className="w-[3px] h-6 rounded-full bg-no-blue/70 hover:bg-no-blue transition-colors shadow-sm" />
         </div>
+
+        {/* ── History year handle — only when history mode is active ── */}
+        {historyMode && (
+          <div
+            className="absolute top-0 bottom-0 z-20 flex flex-col items-center justify-center
+                       cursor-ew-resize touch-none"
+            style={{ left: `${historyPct}%`, transform: "translateX(-50%)", width: "28px" }}
+            onPointerDown={handleHistoryDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            role="slider"
+            aria-label="Historical map year"
+            aria-valuenow={historyYear}
+            aria-valuemin={YEAR_START}
+            aria-valuemax={YEAR_END}
+          >
+            {/* Diamond head */}
+            <div
+              className="absolute w-2.5 h-2.5 rotate-45 bg-amber-400
+                         shadow-[0_0_8px_rgba(251,191,36,0.8)]"
+              style={{ top: "6px" }}
+            />
+            {/* Amber glow line */}
+            <div className="w-[2px] h-7 rounded-full bg-amber-400
+                            shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+          </div>
+        )}
       </div>
     </div>
   );

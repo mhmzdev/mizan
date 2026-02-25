@@ -118,9 +118,11 @@ Key actions: `openDrawer(year, noteId?, title?, sourceEvent?, pendingLat?, pendi
 | `drawerPreviewPin` | `{ lat, lng, noteId } \| null` | Temporary marker shown while NoteDrawer has unsaved coords |
 | `locationPickMode` | `boolean` | True while user is picking a location on the map for a note |
 | `pendingLocationPick` | `{ lat, lng } \| null` | Coordinates resolved when location pick completes |
+| `historyMode` | `boolean` | true = OHM historical tiles active; false = modern basemap |
+| `historyYear` | `number` | Mizan internal year the OHM date filter is set to |
 
-Key actions: `setViewMode`, `setMapCenter`, `setMapZoom`, `setMapRange`, `setDrawerPreviewPin`, `setLocationPickMode`, `setPendingLocationPick`.
-`viewMode`, `mapCenter`, `mapZoom`, `mapRangeStart/End` are persisted to localStorage. `drawerPreviewPin`, `locationPickMode`, `pendingLocationPick` are always reset on mount.
+Key actions: `setViewMode`, `setMapCenter`, `setMapZoom`, `setMapRange`, `setDrawerPreviewPin`, `setLocationPickMode`, `setPendingLocationPick`, `setHistoryMode`, `setHistoryYear`.
+`viewMode`, `mapCenter`, `mapZoom`, `mapRangeStart/End`, `historyMode`, `historyYear` are persisted to localStorage. `drawerPreviewPin`, `locationPickMode`, `pendingLocationPick` are always reset on mount.
 
 ---
 
@@ -160,6 +162,8 @@ page.tsx
 | `mizan_map_center` | `{ lat, lng }` JSON — last map camera center |
 | `mizan_map_zoom` | Float — last map zoom level |
 | `mizan_map_range` | `{ start, end }` JSON — last map time slider range (default: −100 / 99) |
+| `mizan_history_mode` | `"1"` when historical map mode is active |
+| `mizan_history_year` | Integer — the year the OHM date filter is set to |
 | `mizan_tour_done` | `"1"` when the main timeline onboarding tour has been completed |
 | `mizan_map_tour_done` | `"1"` when the map view onboarding tour has been completed |
 
@@ -174,6 +178,8 @@ page.tsx
 | `range_to` | Timeline sidebar range filter end year |
 | `map_range_from` | Map time slider start year |
 | `map_range_to` | Map time slider end year |
+| `history` | `"1"` when historical map mode is active |
+| `history_year` | The OHM date filter year |
 
 `useUrlSync` debounces writes at 350 ms and reads on mount (priority: URL > localStorage). Map range and timeline range are tracked separately to avoid cross-contamination when switching views.
 

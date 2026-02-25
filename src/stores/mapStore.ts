@@ -2,10 +2,12 @@ import { create } from "zustand";
 
 export type ViewMode = "timeline" | "map";
 
-export const VIEW_MODE_KEY = "mizan_view_mode";
-const MAP_CENTER_KEY = "mizan_map_center";
-const MAP_ZOOM_KEY   = "mizan_map_zoom";
-const MAP_RANGE_KEY  = "mizan_map_range";
+export const VIEW_MODE_KEY  = "mizan_view_mode";
+const MAP_CENTER_KEY        = "mizan_map_center";
+const MAP_ZOOM_KEY          = "mizan_map_zoom";
+const MAP_RANGE_KEY         = "mizan_map_range";
+const HISTORY_MODE_KEY      = "mizan_history_mode";
+const HISTORY_YEAR_KEY      = "mizan_history_year";
 
 const DEFAULT_MAP_RANGE = { start: -100, end: 99 };
 
@@ -50,6 +52,21 @@ function readMapZoom(): number {
   return 4;
 }
 
+function readHistoryMode(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(HISTORY_MODE_KEY) === "1";
+}
+
+function readHistoryYear(): number {
+  if (typeof window === "undefined") return 0;
+  const stored = localStorage.getItem(HISTORY_YEAR_KEY);
+  if (stored !== null) {
+    const y = parseInt(stored, 10);
+    if (!isNaN(y)) return y;
+  }
+  return 0;
+}
+
 interface MapState {
   viewMode: ViewMode;
   mapCenter: { lat: number; lng: number };
@@ -63,6 +80,11 @@ interface MapState {
   /** written by MapView on tap in pick mode; consumed + cleared by NoteDrawer */
   pendingLocationPick: { lat: number; lng: number } | null;
 
+  /** true = OHM historical tiles active; false = modern basemap */
+  historyMode: boolean;
+  /** Internal year the OHM date filter is set to */
+  historyYear: number;
+
   setViewMode: (mode: ViewMode) => void;
   setMapCenter: (c: { lat: number; lng: number }) => void;
   setMapZoom: (z: number) => void;
@@ -70,6 +92,8 @@ interface MapState {
   setDrawerPreviewPin: (pin: { lat: number; lng: number; noteId: number | null } | null) => void;
   setLocationPickMode: (active: boolean) => void;
   setPendingLocationPick: (loc: { lat: number; lng: number } | null) => void;
+  setHistoryMode: (on: boolean) => void;
+  setHistoryYear: (year: number) => void;
 }
 
 export const useMapStore = create<MapState>((set) => ({
@@ -83,6 +107,8 @@ export const useMapStore = create<MapState>((set) => ({
   drawerPreviewPin:    null,
   locationPickMode:    false,
   pendingLocationPick: null,
+  historyMode:         readHistoryMode(),
+  historyYear:         readHistoryYear(),
 
   setViewMode: (mode) => {
     if (typeof window !== "undefined") localStorage.setItem(VIEW_MODE_KEY, mode);
@@ -115,5 +141,17 @@ export const useMapStore = create<MapState>((set) => ({
 
   setPendingLocationPick: (loc) => {
     set({ pendingLocationPick: loc });
+  },
+
+  setHistoryMode: (on) => {
+    if (typeof window !== "undefined")
+      localStorage.setItem(HISTORY_MODE_KEY, on ? "1" : "0");
+    set({ historyMode: on });
+  },
+
+  setHistoryYear: (year) => {
+    if (typeof window !== "undefined")
+      localStorage.setItem(HISTORY_YEAR_KEY, String(year));
+    set({ historyYear: year });
   },
 }));
