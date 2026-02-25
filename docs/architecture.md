@@ -21,7 +21,8 @@ src/
       NoteDot.tsx              # Hover tooltip for a user note; pulse animation when active
       EventDot.tsx             # Hover tooltip for a seed event (years mode only)
     Map/
-      MapView.tsx              # MapLibre GL canvas; GeoJSON circle layer; preview pin; range + theme reactive
+      MapView.tsx              # MapLibre GL canvas; GeoJSON circle layer; preview pin; map range + theme reactive
+      TimeSlider.tsx           # Full-width glassmorphism bar at map bottom; two drag handles + center-drag pan; drives mapStore.mapRangeStart/End
     Notes/
       NotesPanel.tsx           # Left panel: note list, search bar, range filter badge, unmapped count
       NoteCard.tsx             # Single row in the note list
@@ -29,6 +30,8 @@ src/
     Sidebar/
       Sidebar.tsx              # Right panel: center year, jump-to-year, date range, timelines manager
       ModeButton.tsx           # Individual zoom mode button
+    Tour/
+      TourOverlay.tsx          # Spotlight tour overlay; handles main timeline tour (3 steps) + map tour (2 steps) triggered on first map visit
     ui/
       ConfirmDialog.tsx        # Generic destructive-action confirmation modal
       ExportImportDialog.tsx   # Export/import notes + timelines as JSON (HardDrive button in header)
@@ -38,7 +41,8 @@ src/
     notesStore.ts              # Notes + timelines CRUD + drawer state — see "Stores" below
     dialogStore.ts             # Confirm dialog (imperative API: await confirm({...}))
     settingsStore.ts           # User preferences (notation) — persisted to localStorage
-    mapStore.ts                # Map view state (viewMode, mapCenter, mapZoom, drawerPreviewPin) — see "Stores" below
+    mapStore.ts                # Map view state (viewMode, mapCenter, mapZoom, mapRange, location pick) — see "Stores" below
+    tourStore.ts               # Onboarding tour state for main timeline tour + map tour
 
   hooks/
     useUrlSync.ts              # URL ↔ store sync; debounced writes + localStorage persistence
@@ -95,8 +99,12 @@ Key actions: `setPxPerYear`, `setScrollLeft`, `setPendingNav`, `setRange`, `clea
 | `pendingTitle` | `string` | Pre-filled title when opening drawer from a global event dot |
 | `pendingSourceEvent` | `TimelineEvent \| null` | Full event object when opening from a global event (annotation mode) |
 | `pendingDelete` | `PendingDelete \| null` | Stashed note/timeline for undo toast; `null` = nothing pending |
+| `panelSearch` | `string` | Current text filter in the NotesPanel search bar (drives map GeoJSON filter) |
+| `panelTimelineId` | `number \| null` | Currently selected timeline filter in NotesPanel (drives map GeoJSON filter) |
+| `pendingLat` | `number \| null` | Pre-filled latitude when opening drawer from a map tap |
+| `pendingLng` | `number \| null` | Pre-filled longitude when opening drawer from a map tap |
 
-Key actions: `openDrawer(year, noteId?, title?, sourceEvent?)`, `closeDrawer()`, `saveNote`, `updateNote`, `deleteNote`, `loadNotes`, `loadTimelines`, `addTimeline`, `renameTimeline`, `deleteTimeline`, `toggleTimelineHidden`, `linkNotes`, `unlinkNotes`, `clearBrokenLink`, `importData`, `undoDelete`, `commitDelete`.
+Key actions: `openDrawer(year, noteId?, title?, sourceEvent?, pendingLat?, pendingLng?)`, `closeDrawer()`, `saveNote`, `updateNote`, `deleteNote`, `loadNotes`, `loadTimelines`, `addTimeline`, `renameTimeline`, `deleteTimeline`, `toggleTimelineHidden`, `linkNotes`, `unlinkNotes`, `clearBrokenLink`, `importData`, `undoDelete`, `commitDelete`, `setPanelSearch`, `setPanelTimelineId`.
 
 ### `mapStore` (`src/stores/mapStore.ts`)
 
@@ -105,10 +113,14 @@ Key actions: `openDrawer(year, noteId?, title?, sourceEvent?)`, `closeDrawer()`,
 | `viewMode` | `"timeline" \| "map"` | Which center panel is shown |
 | `mapCenter` | `{ lat: number; lng: number }` | Last map center (default: Levant 32°N 35°E) |
 | `mapZoom` | `number` | Last map zoom level (default: 4) |
+| `mapRangeStart` | `number` | Time slider left bound — independent of timeline sidebar range (default: −100) |
+| `mapRangeEnd` | `number` | Time slider right bound (default: 99) |
 | `drawerPreviewPin` | `{ lat, lng, noteId } \| null` | Temporary marker shown while NoteDrawer has unsaved coords |
+| `locationPickMode` | `boolean` | True while user is picking a location on the map for a note |
+| `pendingLocationPick` | `{ lat, lng } \| null` | Coordinates resolved when location pick completes |
 
-Key actions: `setViewMode`, `setMapCenter`, `setMapZoom`, `setDrawerPreviewPin`.
-`viewMode`, `mapCenter`, `mapZoom` are persisted to localStorage. `drawerPreviewPin` is always `null` on mount.
+Key actions: `setViewMode`, `setMapCenter`, `setMapZoom`, `setMapRange`, `setDrawerPreviewPin`, `setLocationPickMode`, `setPendingLocationPick`.
+`viewMode`, `mapCenter`, `mapZoom`, `mapRangeStart/End` are persisted to localStorage. `drawerPreviewPin`, `locationPickMode`, `pendingLocationPick` are always reset on mount.
 
 ---
 
@@ -147,17 +159,23 @@ page.tsx
 | `mizan_view_mode` | `"timeline"` \| `"map"` — last active center panel |
 | `mizan_map_center` | `{ lat, lng }` JSON — last map camera center |
 | `mizan_map_zoom` | Float — last map zoom level |
+| `mizan_map_range` | `{ start, end }` JSON — last map time slider range (default: −100 / 99) |
+| `mizan_tour_done` | `"1"` when the main timeline onboarding tour has been completed |
+| `mizan_map_tour_done` | `"1"` when the map view onboarding tour has been completed |
 
 ### URL params
 | Param | Meaning |
 |---|---|
 | `year` | Center year (integer) |
 | `zoom` | `pxPerYear` (float) |
+| `view` | `"timeline"` \| `"map"` — active center panel |
 | `note` | Note id — deep link, opens that note directly |
-| `range_from` | Range filter start year |
-| `range_to` | Range filter end year |
+| `range_from` | Timeline sidebar range filter start year |
+| `range_to` | Timeline sidebar range filter end year |
+| `map_range_from` | Map time slider start year |
+| `map_range_to` | Map time slider end year |
 
-`useUrlSync` debounces writes at 350 ms and reads on mount (priority: URL > localStorage).
+`useUrlSync` debounces writes at 350 ms and reads on mount (priority: URL > localStorage). Map range and timeline range are tracked separately to avoid cross-contamination when switching views.
 
 ---
 

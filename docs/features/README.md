@@ -54,3 +54,7 @@ One file per feature. Write the spec before implementation — it forces clarity
 | Timeline show/hide | Toggle visibility of a timeline lane without deleting it |
 | Export / Import | Full JSON snapshot of all notes + timelines; `HardDrive` button in header |
 | Undo delete | Toast after deleting a note or timeline; action reverts within the same session |
+| Map view | MapLibre GL canvas toggled via Globe button; OpenFreeMap dark tiles (Protomaps CDN optional via `NEXT_PUBLIC_PROTOMAPS_KEY`); pins for notes + events; long-press to create note; tap pin to edit; location pick mode; theme-reactive |
+| Map time slider | Full-width glassmorphism bar at map bottom; two drag handles resize window; center drag pans without resizing; drives visible pin filter independent of timeline sidebar range; persisted to `mizan_map_range` + URL `map_range_from/to` |
+| Onboarding tours | Main timeline tour (3 steps, first visit); map tour (2 steps, first map visit) — spotlight overlay; persisted completion flags |
+| Favicon | SVG `src/app/icon.svg` auto-served by Next.js App Router; Mizan logo adapted (three lanes + glowing tick on dark rounded background) |
