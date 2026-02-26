@@ -260,6 +260,12 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
   const pendingSourceEvent = useNotesStore((s) => s.pendingSourceEvent);
 
   const historyYearDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Sequence counter — incremented each time a new filter op starts.
+  // Stale idle/timeout callbacks compare against this and self-discard.
+  const filterSeqRef     = useRef(0);
+  // Cleanup fn for the currently tracked filter operation (cancels idle listener + timeout).
+  const filterCleanupRef = useRef<(() => void) | null>(null);
+  const [isFiltering, setIsFiltering] = useState(false);
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -499,6 +505,7 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
     return () => {
       ro.disconnect();
       observer.disconnect();
+      if (filterCleanupRef.current) { filterCleanupRef.current(); filterCleanupRef.current = null; }
       map.remove();
       mapRef.current = null;
       setLoaded(false);
@@ -541,14 +548,59 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
 
   // ── Reactive: update OHM date filter when history year changes ───────────
   useEffect(() => {
-    if (!historyMode) return;
+    if (!historyMode) {
+      // History mode turned off — cancel any in-flight filter tracking
+      if (filterCleanupRef.current) { filterCleanupRef.current(); filterCleanupRef.current = null; }
+      setIsFiltering(false);
+      return;
+    }
+
+    // Clear pending debounce (user still dragging)
     if (historyYearDebounceRef.current) clearTimeout(historyYearDebounceRef.current);
+
+    // Wait until the user stops moving the slider for 300 ms
     historyYearDebounceRef.current = setTimeout(() => {
-      if (mapRef.current?.isStyleLoaded()) {
-        applyOHMDateFilter(mapRef.current, historyYear);
-      }
+      const map = mapRef.current;
+      if (!map?.isStyleLoaded()) return;
+
+      // Cancel tracking from any previous filter operation
+      if (filterCleanupRef.current) { filterCleanupRef.current(); filterCleanupRef.current = null; }
+
+      const seq = ++filterSeqRef.current;
+
+      // Apply the date filter (synchronous, client-side — no network request)
+      applyOHMDateFilter(map, historyYear);
+
+      // Check whether MapLibre actually needs to fetch new tiles.
+      // For vector tiles with cached data the filter is instant (client-side) and
+      // areTilesLoaded() returns true immediately — showing the indicator would
+      // just produce a jarring flash.  Only show it when tile fetching is required.
+      if (map.areTilesLoaded()) return;
+
+      setIsFiltering(true);
+
+      // Track tile loading: MapLibre's "idle" fires once all tiles finish rendering.
+      // Fall back to hiding the indicator after 8 s in case idle never fires.
+      const fallback = setTimeout(() => {
+        if (filterSeqRef.current === seq) setIsFiltering(false);
+      }, 8_000);
+
+      const handleIdle = () => {
+        clearTimeout(fallback);
+        if (filterSeqRef.current === seq) setIsFiltering(false);
+      };
+
+      map.once("idle", handleIdle);
+
+      // Store cleanup so the next operation can cancel this one
+      filterCleanupRef.current = () => {
+        clearTimeout(fallback);
+        map.off("idle", handleIdle);
+      };
+
       historyYearDebounceRef.current = null;
-    }, 150);
+    }, 300);
+
     return () => {
       if (historyYearDebounceRef.current) {
         clearTimeout(historyYearDebounceRef.current);
@@ -709,6 +761,28 @@ export default function MapView({events}: {events: TimelineEvent[]}) {
           </button>
         </div>
       )}
+
+      {/* "Going back in time" — shown while OHM tiles settle after a date filter change */}
+      <AnimatePresence>
+        {historyMode && isFiltering && (
+          <motion.div
+            key="time-filter-hint"
+            initial={{opacity: 0, y: 6}}
+            animate={{opacity: 1, y: 0}}
+            exit={{opacity: 0, y: 6}}
+            transition={{duration: 0.2}}
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+          >
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full
+                            bg-amber-950/90 border border-amber-400/40
+                            text-amber-300 text-[11px] font-mono tracking-wide
+                            backdrop-blur-sm shadow-md select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              Going back in time…
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Time slider — always visible once map tiles are loaded */}
       {loaded && <TimeSlider />}
